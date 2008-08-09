@@ -30,7 +30,13 @@ ABI_VERSION=[0,5,0]
 prefix = env['PREFIX']
 install_prefix = env['DESTDIR'] + '/' + prefix
 
-libraries = ['agg'] + env['LIBS']
+libraries = ['agg_pic'] + env['LIBS']
+# Debian hack to clean up linking of main library (fixes dpkg-shlibdeps
+# warnings)
+libraries.remove('z')
+libraries.remove('z')
+libraries.remove('boost_program_options%s-mt' % env['BOOST_APPEND'])
+libraries.remove('boost_iostreams%s-mt' % env['BOOST_APPEND'])
 
 if env['PLATFORM'] == 'Darwin':
     libraries.append('iconv')

@@ -1,0 +1,97 @@
+Source: mapnik
+Priority: optional
+Maintainer: Dominic Hargreaves <dom@earth.li>
+Build-Depends: libboost-thread-dev (>= 1.34.0), libboost-filesystem-dev (>= 1.34.0), libboost-regex-dev (>= 1.34.0), libboost-program-options-dev (>= 1.34.0), libboost-python-dev (>= 1.34.1-9), libpng12-dev, libjpeg62-dev, libtiff4-dev, zlib1g-dev, libfreetype6-dev, libpq-dev, proj, libltdl3-dev, libfribidi-dev, python, debhelper (>= 5.0.38), python2.5-dev, python-central (>= 0.5.6), libgdal1-dev, libxml2-dev, libagg-dev, libboost-iostreams-dev (>= 1.34.0), libagg-dev
+Standards-Version: 3.8.0
+Section: libs
+XS-Python-Version: 2.5
+
+Package: libmapnik0.5
+Section: libs
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, ttf-dejavu
+Suggests: postgis
+Description: C++/Python toolkit for developing GIS applications (libraries)
+ Mapnik is an OpenSource C++/Python toolkit for developing GIS
+ (Geographic Information Systems) applications. At the core is a C++
+ shared library providing algorithms/patterns for spatial data access and
+ visualization.
+ .
+ Essentially a collection of geographic objects (map, layer, datasource,
+ feature, geometry), the library doesn't rely on "windowing systems" and
+ is intended to work in multi-threaded environments
+ .
+ High-level Python bindings (boost.python) facilitate rapid application
+ development, targeting zope3, django, etc.
+ .
+ This package contains the shared library and input plugins.
+
+Package: mapnik-plugins
+Section: libs
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, libmapnik0.5
+Description: C++/Python toolkit for developing GIS applications (transitional)
+ This is a transitional package; plugins are now shipped in the main
+ library package.
+
+Package: libmapnik-dev
+Section: libdevel
+Architecture: all
+Depends: libmapnik0.5 (>= ${source:Version}), libmapnik0.5 (<< ${source:Version}.1~), libboost-thread-dev, libboost-filesystem-dev, libboost-regex-dev, libboost-program-options-dev, libboost-python-dev, libpng12-dev, libjpeg62-dev, libtiff4-dev, zlib1g-dev, libfreetype6-dev, libpq-dev, proj, libltdl3-dev, libfribidi-dev, libc6-dev | libc-dev
+Description: C++/Python toolkit for developing GIS applications (devel)
+ Mapnik is an OpenSource C++/Python toolkit for developing GIS
+ (Geographic Information Systems) applications. At the core is a C++
+ shared library providing algorithms/patterns for spatial data access and
+ visualization.
+ .
+ Essentially a collection of geographic objects (map, layer, datasource,
+ feature, geometry), the library doesn't rely on "windowing systems" and
+ is intended to work in multi-threaded environments
+ .
+ High-level Python bindings (boost.python) facilitate rapid application
+ development, targeting zope3, django, etc.
+ .
+ This package contains the development headers, API documentation, and
+ build utilities.
+
+Package: mapnik-utils
+Section: utils
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: C++/Python toolkit for developing GIS applications (utilities)
+ Mapnik is an OpenSource C++/Python toolkit for developing GIS
+ (Geographic Information Systems) applications. At the core is a C++
+ shared library providing algorithms/patterns for spatial data access and
+ visualization.
+ .
+ Essentially a collection of geographic objects (map, layer, datasource,
+ feature, geometry), the library doesn't rely on "windowing systems" and
+ is intended to work in multi-threaded environments
+ .
+ High-level Python bindings (boost.python) facilitate rapid application
+ development, targeting zope3, django, etc.
+ .
+ This package contains miscellaneous utilities distributed with mapnik:
+ .
+ shapeindex: program to creates file system based index for ESRI shape-files
+
+Package: python-mapnik
+Section: python
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, ${python:Depends}, mapnik-plugins
+Provides: ${python:Provides}
+XB-Python-Version: ${python:Versions}
+Description: C++/Python toolkit for developing GIS applications (Python)
+ Mapnik is an OpenSource C++/Python toolkit for developing GIS
+ (Geographic Information Systems) applications. At the core is a C++
+ shared library providing algorithms/patterns for spatial data access and
+ visualization.
+ .
+ Essentially a collection of geographic objects (map, layer, datasource,
+ feature, geometry), the library doesn't rely on "windowing systems" and
+ is intended to work in multi-threaded environments
+ .
+ High-level Python bindings (boost.python) facilitate rapid application
+ development, targeting zope3, django, etc.
+ .
+ This package contains the Python bindings.

@@ -40,16 +40,16 @@ int main ( int argc , char** argv)
 {    
     if (argc != 2)
     {
-        std::cout << "usage: ./rundemo <mapnik_install_dir>\n";
+        std::cout << "usage: ./rundemo <mapnik_plugin_dir>\n";
         return EXIT_SUCCESS;
     }
     
     using namespace mapnik;
     try {
         std::cout << " running demo ... \n";
-        std::string mapnik_dir(argv[1]);
-        datasource_cache::instance()->register_datasources(mapnik_dir + "/lib/mapnik/input/"); 
-        freetype_engine::register_font(mapnik_dir + "/lib/mapnik/fonts/DejaVuSans.ttf");
+        std::string mapnik_plugin_dir(argv[1]);
+        datasource_cache::instance()->register_datasources(mapnik_plugin_dir); 
+        freetype_engine::register_font("/usr/share/fonts/truetype/ttf-dejavu/DejaVuSans.ttf");
         
         Map m(800,600);
         m.set_background(color_factory::from_string("white"));

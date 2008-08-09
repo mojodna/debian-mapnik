@@ -23,7 +23,7 @@
 import os, sys, platform
 
 if platform.uname()[4] == 'x86_64':
-    LIBDIR_SCHEMA='lib64' 
+    LIBDIR_SCHEMA='lib' 
 elif platform.uname()[4] == 'ppc64':
     LIBDIR_SCHEMA='lib64'
 else:
@@ -55,6 +55,7 @@ opts.Add(PathOption('PROJ_INCLUDES', 'Search path for PROJ.4 include files', '/u
 opts.Add(PathOption('PROJ_LIBS', 'Search path for PROJ.4 library files', '/usr/local/' + LIBDIR_SCHEMA))
 opts.Add(PathOption('GDAL_INCLUDES', 'Search path for GDAL include files', '/usr/include'))
 opts.Add(PathOption('GDAL_LIBS', 'Search path for GDAL library files', '/usr/' + LIBDIR_SCHEMA))
+opts.Add('GDAL_LIBNAME', 'Name of the GDAL library to link against', 'gdal')
 opts.Add(PathOption('PYTHON','Python executable', sys.executable))
 opts.Add(ListOption('INPUT_PLUGINS','Input drivers to include','all',['postgis','shape','raster','gdal']))
 opts.Add(ListOption('BINDINGS','Language bindings to build','all',['python']))
@@ -93,7 +94,7 @@ def uniq_add(env, key, val):
     if not val in env[key]: env[key].append(val)
 
 # Libraries and headers dependency checks
-env['CPPPATH'] = ['#agg/include', '#tinyxml', '#include', '#']
+env['CPPPATH'] = ['/usr/include/agg2', '#include', '#']
 env['LIBPATH'] = ['#agg', '#src']
 
 # Solaris & Sun Studio settings (the `SUNCC` flag will only be
@@ -154,7 +155,7 @@ C_LIBSHEADERS = [
 ]
 
 CXX_LIBSHEADERS = [
-    ['gdal', 'gdal_priv.h',False]
+    [env['GDAL_LIBNAME'], 'gdal_priv.h',False]
 ]
 
 if env['BIDI'] : C_LIBSHEADERS.append(['fribidi','fribidi/fribidi.h',True])
@@ -203,7 +204,8 @@ bindings = [ binding.strip() for binding in Split(env['BINDINGS'])]
 #### Build instructions & settings ####
 
 # Build agg first, doesn't need anything special
-SConscript('agg/SConscript')
+# Debian modification: use libagg-dev instead
+#SConscript('agg/SConscript')
 
 # Build the core library
 SConscript('src/SConscript')
@@ -224,7 +226,7 @@ if 'shape' in inputplugins:
 if 'raster' in inputplugins:
     SConscript('plugins/input/raster/SConscript')
 
-if 'gdal' in inputplugins and 'gdal' in env['LIBS']:
+if 'gdal' in inputplugins and env['GDAL_LIBNAME'] in env['LIBS']:
     SConscript('plugins/input/gdal/SConscript')
 
 if 'gigabase' in inputplugins and 'gigabase_r' in env['LIBS']:

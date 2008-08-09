@@ -1,0 +1,91 @@
+mapnik (0.5.1-3) unstable; urgency=low
+
+  * Link against system agg library (closes: #493786) required for...
+  * Update Standards-Version
+  * Add missing #include to fix FTBFS on GNU/kFreeBSD (closes: #493499)
+
+ -- Dominic Hargreaves <dom@earth.li>  Sat,  9 Aug 2008 18:13:25 +0100
+
+mapnik (0.5.1-2) unstable; urgency=low
+
+  * Update mapnik-utils extended description to fix formatting problem
+    (closes: #480333)
+
+ -- Dominic Hargreaves <dom@earth.li>  Fri, 20 Jun 2008 23:38:47 +0100
+
+mapnik (0.5.1-1) unstable; urgency=low
+
+  * New upstream release: re-enables regex support (closes: #471717)
+  * Configure gdal library name dynamically at build time and remove
+    versioned dependency on libgdal1-dev (closes: #473958)
+
+ -- Dominic Hargreaves <dom@earth.li>  Thu,  3 Apr 2008 21:41:32 +0100
+
+mapnik (0.5.0-3) unstable; urgency=low
+
+  * Fix FTBFS with gcc 4.3: include missing headers (closes: #454898)
+  * Fix watch file to cope with new filename
+  * Explicitly link again python 2.5 boost library (closes: #468770)
+
+ -- Dominic Hargreaves <dom@earth.li>  Tue, 25 Mar 2008 20:14:22 +0000
+
+mapnik (0.5.0-2) unstable; urgency=low
+
+  * Fix plugin path in python bindings (closes: #466144)
+  * Remove libboost-serialization-dev build depends again, as
+    #457654 has been fixed.
+  * python-all-dev build depends changed to python2.5-dev
+
+ -- Dominic Hargreaves <dom@earth.li>  Sun, 24 Feb 2008 00:51:03 +0000
+
+mapnik (0.5.0-1) unstable; urgency=low
+
+  * New (final) upstream release
+  * Add libboost-serialization-dev build depends back, to work around
+    #457654 in libboost-dev.
+
+ -- Dominic Hargreaves <dom@earth.li>  Mon, 11 Feb 2008 23:01:05 +0000
+
+mapnik (0.5~svn638-1) experimental; urgency=low
+
+  * New upstream release
+    - Remove build dependency on libboost-serialization-dev
+    - Add build dependency on libgdal1-dev
+    - Bump python build dependency
+    - Add build dependency on libxml2-dev
+    - Now shipping with upstream's soname
+    - Don't link main library against unnecessary libraries
+    - Add build dependency on libboost-iostreams-dev
+    - Missing includes fixed (closes: #454898)
+  * Correct watch file (thanks to Raphael Geissert; closes: #450108)
+  * Update Standard-Version (no changes)
+  * Update build-svn-tarball.sh
+  * Add mapnik-plugin-base to determine the path to plugins
+  * Add Suggests on postgis
+
+ -- Dominic Hargreaves <dom@earth.li>  Wed,  6 Feb 2008 18:07:29 +0000
+
+mapnik (0.4.0-2) unstable; urgency=low
+
+  * Improve description for mapnik-utils (closes: #420286)
+  * Fix FTBFS due to Boost changes: tweak SConstruct and
+    build dependencies (closes: #425901)
+  * Tweak clean target to fix repeated builds
+
+ -- Dominic Hargreaves <dom@earth.li>  Fri, 25 May 2007 00:15:23 +0100
+
+mapnik (0.4.0-1) unstable; urgency=low
+
+  * New upstream release
+  * Remove support for multiple python versions, as Python boost bindings
+    are version-specific.
+  * Include ogcserver script as an example for the python-mapnik package.
+
+ -- Dominic Hargreaves <dom@earth.li>  Fri,  9 Mar 2007 17:14:28 +0000
+
+mapnik (0.3.0+svn424-1) unstable; urgency=low
+
+  * Initial release (Closes: #402792)
+
+ -- Dominic Hargreaves <dom@earth.li>  Sun, 14 Jan 2007 15:53:35 +0000
+

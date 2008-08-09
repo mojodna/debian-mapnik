@@ -36,9 +36,9 @@ if env['PLATFORM'] == 'FreeBSD':
 linkflags = ''
 libraries = ['mapnik','png','jpeg']
 if env['THREADING'] == 'multi':
-    libraries.append('boost_python%s%s' % (env['BOOST_APPEND'],thread_suffix))
+    libraries.append('boost_python%s%s-py25' % (env['BOOST_APPEND'],thread_suffix))
 else :
-    libraries.append('boost_python%s' % env['BOOST_APPEND'])
+    libraries.append('boost_python%s-py25' % env['BOOST_APPEND'])
 
 if env['PLATFORM'] == 'Darwin':
     if env['THREADING'] == 'multi':
@@ -58,11 +58,11 @@ _mapnik = env.LoadableModule('_mapnik', glob.glob('*.cpp'), LIBS=libraries, LDMO
 paths = """
 mapniklibpath = '%s'
 inputpluginspath = mapniklibpath + '/input'
-fontscollectionpath = mapniklibpath + '/fonts'
+fontscollectionpath = '/usr/share/fonts/truetype/ttf-dejavu'
 """
 
 exp =  r"%s{2,}" % os.sep
-mapnik_plugins_dir  = re.sub(exp,os.sep, env['PREFIX'] + '/'+env['LIBDIR_SCHEMA']+'/mapnik')
+mapnik_plugins_dir  = re.sub(exp,os.sep, env['PREFIX'] + '/'+env['LIBDIR_SCHEMA']+'/mapnik/0.5')
 file('mapnik/paths.py','w').write(paths % (mapnik_plugins_dir,))
 
 pymapnik = glob.glob('mapnik/*.py')
