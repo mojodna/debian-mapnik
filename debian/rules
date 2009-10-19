@@ -9,10 +9,8 @@
 # Uncomment this to turn on verbose mode.
 #export DH_VERBOSE=1
 
-GDAL_LIBNAME=$(subst -l,,$(filter -lgdal%,$(shell gdal-config --libs)))
-
 # scons flags
-SCONS_FLAGS=PROJ_INCLUDES=/usr/include PGSQL_INCLUDES=/usr/include/postgresql PROJ_LIBS=/usr/lib GDAL_INCLUDES=/usr/include/gdal DESTDIR=$(CURDIR)/debian/tmp PREFIX=/usr BIDI=yes PYTHON=/usr/bin/python2.5 XMLPARSER=libxml2 GDAL_LIBNAME=$(GDAL_LIBNAME)
+SCONS_FLAGS=INPUT_PLUGINS=raster,sqlite,postgis,ogr,shape,osm,gdal,kismet PROJ_INCLUDES=/usr/include PROJ_LIBS=/usr/lib INTERNAL_LIBAGG=no SYSTEM_FONTS=/usr/share/fonts/truetype/ttf-dejavu PYTHON=/usr/bin/python2.5 XMLPARSER=libxml2 DESTDIR=$(CURDIR)/debian/tmp PREFIX=/usr LIB_DIR_NAME=/mapnik/0.6
 
 CFLAGS = -Wall -g
 
@@ -26,7 +24,7 @@ configure: configure-stamp
 configure-stamp:
 	dh_testdir
 	# Add here commands to configure the package.
-
+	python scons/scons.py configure $(SCONS_FLAGS)
 	touch configure-stamp
 
 
@@ -35,7 +33,10 @@ build-stamp: configure-stamp
 	dh_testdir
 
 	# Add here commands to compile the package.
-	python scons/scons.py $(SCONS_FLAGS)
+	python scons/scons.py
+	# We don't provide pkg-config files so this Makefile is just confusing
+	# when installed as a demo
+	rm -f demo/c++/Makefile
 	touch $@
 
 clean:
@@ -44,17 +45,17 @@ clean:
 	rm -f build-stamp configure-stamp
 
 	# Add here commands to clean up after the build process.
-	#-$(MAKE) clean
-	python scons/scons.py $(SCONS_FLAGS) --clean
+	python scons/scons.py --clean
 	rm -rf .sconf_temp
 	find -name '*.pyc' -exec rm -f {} \;
 	rm -f config.log bindings/python/mapnik/paths.py 
 	find -name '.sconsign*' -exec rm -f {} \;
 	find -name '*.o' -exec rm -f {} \;
 	rm -f utils/shapeindex/shapeindex
+	rm -f config.py config.cache
 
 	# Lintian fix
-	chmod -x demo/viewer/images/*.png
+	chmod -x demo/viewer/images/*.png bindings/python/mapnik/ogcserver/modserver.py
 
 	dh_clean 
 
@@ -65,7 +66,7 @@ install: build
 	dh_installdirs
 
 	# Add here commands to install the package into debian/tmp
-	python scons/scons.py $(SCONS_FLAGS) install
+	python scons/scons.py install
 	find $(CURDIR)/debian/tmp -name '.sconsign' -exec rm -f {} \;
 	install -d $(CURDIR)/debian/tmp/usr/bin
 	install -m 0755 debian/mapnik-plugin-base $(CURDIR)/debian/tmp/usr/bin

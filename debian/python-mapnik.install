@@ -1,2 +1,2 @@
-usr/lib/python*/site-packages/mapnik/*
-usr/lib/python*/site-packages/mapnik/*/*
+usr/lib/python*/*-packages/mapnik/*
+usr/lib/python*/*-packages/mapnik/*/*
