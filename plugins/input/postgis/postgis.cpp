@@ -23,11 +23,13 @@
 //$Id: postgis.cc 44 2005-04-22 18:53:54Z pavlenko $
 
 // mapnik
+#include <mapnik/global.hpp>
+#include <mapnik/ptree_helpers.hpp>
 #include "connection_manager.hpp"
 #include "postgis.hpp"
-#include <mapnik/ptree_helpers.hpp>
 
 // boost
+#include <boost/algorithm/string.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/tokenizer.hpp>
 
@@ -38,6 +40,11 @@
 #include <sstream>
 #include <iomanip>
 
+#ifndef MAPNIK_BIG_ENDIAN
+#define WKB_ENCODING "NDR"
+#else
+#define WKB_ENCODING "XDR"
+#endif
 
 DATASOURCE_PLUGIN(postgis_datasource)
 
@@ -57,6 +64,9 @@ using mapnik::attribute_descriptor;
 postgis_datasource::postgis_datasource(parameters const& params)
    : datasource (params),
      table_(*params.get<std::string>("table","")),
+     geometry_field_(*params.get<std::string>("geometry_field","")),
+     cursor_fetch_size_(*params_.get<int>("cursor_size",0)),
+     row_limit_(*params_.get<int>("row_limit",0)),
      type_(datasource::Vector),
      extent_initialized_(false),
      desc_(*params.get<std::string>("type"),"utf-8"),
@@ -85,11 +95,11 @@ postgis_datasource::postgis_datasource(parameters const& params)
       {
          try 
          {
-             d[i] = boost::lexical_cast<double>(*beg);
+            d[i] = boost::lexical_cast<double>(boost::trim_copy(*beg));
          }
          catch (boost::bad_lexical_cast & ex)
          {
-            std::clog << ex.what() << "\n";
+            std::clog << *beg << " : " << ex.what() << "\n";
             break;
          }
          if (i==3) 
@@ -121,9 +131,27 @@ postgis_datasource::postgis_datasource(parameters const& params)
          desc_.set_encoding(conn->client_encoding());
          
          std::string table_name=table_from_sql(table_);
+         std::string schema_name="";
+         std::string::size_type idx=table_name.find_last_of('.');
+         if (idx!=std::string::npos)
+         {
+            schema_name=table_name.substr(0,idx);
+            table_name=table_name.substr(idx+1);
+         }
+         else
+         {
+            table_name=table_name.substr(0);
+         }
+
          std::ostringstream s;
          s << "select f_geometry_column,srid,type from ";
          s << GEOMETRY_COLUMNS <<" where f_table_name='" << table_name<<"'";
+         
+         if (schema_name.length() > 0)
+            s <<" and f_table_schema='"<< schema_name <<"'";
+
+         if (geometry_field_.length() > 0)
+            s << " and f_geometry_column = '" << geometry_field_ << "'";
             
          shared_ptr<ResultSet> rs=conn->executeQuery(s.str());
          if (rs->next())
@@ -134,7 +162,7 @@ postgis_datasource::postgis_datasource(parameters const& params)
             }
             catch (bad_lexical_cast &ex)
             {
-               clog << ex.what() << endl;
+               clog << rs->getValue("srid") << ":" << ex.what() << endl;
             }
             geometryColumn_=rs->getValue("f_geometry_column");
             std::string postgisType=rs->getValue("type");
@@ -195,17 +223,51 @@ layer_descriptor postgis_datasource::get_descriptor() const
 
 std::string postgis_datasource::table_from_sql(const std::string& sql)
 {
-   std::string table_name(sql);
-   std::transform(table_name.begin(),table_name.end(),table_name.begin(),tolower);
-   std::string::size_type idx=table_name.rfind("from");
+   std::string table_name = boost::algorithm::to_lower_copy(sql);
+   boost::algorithm::replace_all(table_name,"\n"," ");
+   
+   std::string::size_type idx = table_name.rfind(" from ");
    if (idx!=std::string::npos)
    {
-      idx=table_name.find_first_not_of(" ",idx+4);
-      table_name=table_name.substr(idx);
+      
+      idx=table_name.find_first_not_of(" ",idx+5);
+      if (idx != std::string::npos)
+      {
+         table_name=table_name.substr(idx);
+      }
       idx=table_name.find_first_of(" )");
-      return table_name.substr(0,idx);
+      if (idx != std::string::npos)
+      {
+         table_name = table_name.substr(0,idx);
+      }
    }
    return table_name;
+}
+
+boost::shared_ptr<IResultSet> postgis_datasource::get_resultset(boost::shared_ptr<Connection> const &conn, const std::string &sql) const
+{
+     if (cursor_fetch_size_ > 0) {
+         // cursor
+         std::ostringstream csql;
+         std::string cursor_name = conn->new_cursor_name();
+
+         csql << "DECLARE " << cursor_name << " BINARY INSENSITIVE NO SCROLL CURSOR WITH HOLD FOR " << sql << " FOR READ ONLY";
+
+#ifdef MAPNIK_DEBUG
+         std::clog << csql.str() << "\n";
+#endif
+         if (!conn->execute(csql.str())) {
+            throw mapnik::datasource_exception( "PSQL Error: Creating cursor for data select." );
+         }
+         return shared_ptr<CursorResultSet>(new CursorResultSet(conn, cursor_name, cursor_fetch_size_));
+
+     } else {
+         // no cursor
+#ifdef MAPNIK_DEBUG
+         std::clog << sql << "\n";
+#endif
+         return conn->executeQuery(sql,1);
+     }
 }
 
 featureset_ptr postgis_datasource::features(const query& q) const
@@ -221,7 +283,7 @@ featureset_ptr postgis_datasource::features(const query& q) const
          PoolGuard<shared_ptr<Connection>,shared_ptr<Pool<Connection,ConnectionCreator> > > guard(conn,pool);
          std::ostringstream s;
             
-         s << "select asbinary("<<geometryColumn_<<") as geom";
+         s << "SELECT AsBinary(\""<<geometryColumn_<<"\",'"<< WKB_ENCODING << "') AS geom";
          std::set<std::string> const& props=q.property_names();
          std::set<std::string>::const_iterator pos=props.begin();
          std::set<std::string>::const_iterator end=props.end();
@@ -230,15 +292,16 @@ featureset_ptr postgis_datasource::features(const query& q) const
             s <<",\""<<*pos<<"\"";
             ++pos;
          }	 
-         s << " from " << table_<<" where "<<geometryColumn_<<" && setSRID('BOX3D(";
+         s << " from " << table_ << " WHERE \""<<geometryColumn_<<"\" && SetSRID('BOX3D(";
          s << std::setprecision(16);
          s << box.minx() << " " << box.miny() << ",";
          s << box.maxx() << " " << box.maxy() << ")'::box3d,"<<srid_<<")";
-            
-#ifdef MAPNIK_DEBUG
-         std::clog << s.str() << "\n";
-#endif           
-         shared_ptr<ResultSet> rs=conn->executeQuery(s.str(),1);
+         
+         if (row_limit_ > 0) {
+             s << " LIMIT " << row_limit_;
+         }
+         
+         boost::shared_ptr<IResultSet> rs = get_resultset(conn, s.str());
          return featureset_ptr(new postgis_featureset(rs,desc_.get_encoding(),multiple_geometries_,props.size()));
       }
    }
@@ -256,8 +319,8 @@ featureset_ptr postgis_datasource::features_at_point(coord2d const& pt) const
       {       
          PoolGuard<shared_ptr<Connection>,shared_ptr<Pool<Connection,ConnectionCreator> > > guard(conn,pool);
          std::ostringstream s;
-            
-         s << "select asbinary(" << geometryColumn_ << ") as geom";
+           
+         s << "SELECT AsBinary(\"" << geometryColumn_ << "\",'"<< WKB_ENCODING << "') AS geom";
             
          std::vector<attribute_descriptor>::const_iterator itr = desc_.get_descriptors().begin();
          std::vector<attribute_descriptor>::const_iterator end = desc_.get_descriptors().end();
@@ -269,15 +332,16 @@ featureset_ptr postgis_datasource::features_at_point(coord2d const& pt) const
             ++size;
          }
             
-         s << " from " << table_<<" where "<<geometryColumn_<<" && setSRID('BOX3D(";
+         s << " FROM " << table_ << " WHERE \""<<geometryColumn_<<"\" && SetSRID('BOX3D(";
          s << std::setprecision(16);
          s << pt.x << " " << pt.y << ",";
          s << pt.x << " " << pt.y << ")'::box3d,"<<srid_<<")";
-            
-#ifdef MAPNIK_DEBUG
-         std::clog << s.str() << "\n";
-#endif           
-         shared_ptr<ResultSet> rs=conn->executeQuery(s.str(),1);
+         
+         if (row_limit_ > 0) {
+             s << " LIMIT " << row_limit_;
+         }
+         
+         boost::shared_ptr<IResultSet> rs = get_resultset(conn, s.str());
          return featureset_ptr(new postgis_featureset(rs,desc_.get_encoding(),multiple_geometries_, size));
       }
    }

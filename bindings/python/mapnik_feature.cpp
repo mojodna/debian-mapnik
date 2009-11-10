@@ -27,8 +27,11 @@
 #include <boost/python/call_method.hpp>
 #include <boost/python/tuple.hpp>
 #include <boost/python.hpp>
+#include <boost/scoped_array.hpp>
 // mapnik
 #include <mapnik/feature.hpp>
+
+mapnik::geometry2d & (mapnik::Feature::*get_geom1)(unsigned) = &mapnik::Feature::get_geometry;
 
 namespace boost { namespace python {
       struct value_converter : public boost::static_visitor<PyObject*>
@@ -43,9 +46,18 @@ namespace boost { namespace python {
                return ::PyFloat_FromDouble(val);
             }
             
-            PyObject * operator() (std::wstring const& s) const
+            PyObject * operator() (UnicodeString const& s) const
             {
-               return ::PyUnicode_FromWideChar(s.data(),implicit_cast<ssize_t>(s.size()));
+                std::string buffer;
+                mapnik::to_utf8(s,buffer);
+                PyObject *obj = Py_None;
+                obj = ::PyUnicode_DecodeUTF8(buffer.c_str(),implicit_cast<ssize_t>(buffer.length()),0);                
+                return obj;
+            }
+            
+            PyObject * operator() (mapnik::value_null const& s) const
+            {
+               return NULL;
             }
       };
       
@@ -201,6 +213,10 @@ void export_feature()
       .def("__str__",&Feature::to_string)
       .add_property("properties", 
                     make_function(&Feature::props,return_value_policy<reference_existing_object>()))
+//      .def("add_geometry", // TODO define more mapnik::Feature methods
+      .def("num_geometries",&Feature::num_geometries)
+      .def("get_geometry", make_function(get_geom1,return_value_policy<reference_existing_object>()))
+      .def("envelope", &Feature::envelope)
       ;
 
    class_<std::map<std::string, mapnik::value> >("Properties")

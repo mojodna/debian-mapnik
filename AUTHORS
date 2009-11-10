@@ -1,2 +1,55 @@
-Artem Pavlenko <pavlenko@users.berlios.de>
-Jean-Francois Doyon <jfdoyon@gmail.com>
+# $Id: AUTHORS 746 2008-09-24 dane $
+
+Committers
+==========
+
+ - Artem Pavlenko <pavlenko -at- users.berlios.de>
+ - Lucio Asnaghi (OGR, Oracle, SQLite plugins)
+ - Jon Burgess (Core)
+ - Jean-Francois Doyon (Python API, OGCServer) <jfdoyon -at- gmail.com>
+ - Dominic Hargreaves (Stable releases)
+ - Tom Hughes (Cairo)
+ - Ben Moores (PDF branch)
+ - David Siegel (XML)
+ - Vince Spader (TextSymbolizer)
+ - Dane Springmeyer (Python API, SCons) <dane.springmeyer -at- gmail.com>
+ - Andreas Volz (Autotools)
+ - Nick Whitelegg (OSM plugin)
+
+Patches
+=======
+
+ - Andy Allen
+ - Justin Bronn
+ - Christopher Brown
+ - Berteun Damman
+ - Toby Collet
+ - Robert Coup
+ - Krzysztof Godlewski
+ - Beau Gunderson
+ - John Hague
+ - Dennis Luxen
+ - Tom MacWright
+ - Andrii Mishkovskyi
+ - Dražen Odobašić
+ - Martijn van Oosterhout
+ - Cameron Patrick
+ - Igor Podolskiy
+ - Marcin Rudowski
+ - Reid Priedhorsky
+ - Brian Quinion
+ - Christopher Schmidt
+ - Andreas Schneider
+ - Vincent Schut
+ - Ehud Shabtai
+ - Steve Singer
+ - Paul Smith
+ - Dave Stubbs
+ - River Tarnell
+ - Shaun Walbridge
+ - Leslie Wu
+  
+Community Wiki
+==============
+
+ - http://trac.mapnik.org/stractistics

@@ -27,7 +27,8 @@
 // mapnik
 #include <mapnik/enumeration.hpp>
 #include <mapnik/color.hpp>
-#include <mapnik/graphics.hpp> 
+#include <mapnik/font_set.hpp>
+#include <mapnik/graphics.hpp>
 // boost
 #include <boost/tuple/tuple.hpp>
 #include <boost/shared_ptr.hpp>
@@ -41,17 +42,30 @@ namespace mapnik
       LINE_PLACEMENT,
       label_placement_enum_MAX
    };
+   
    DEFINE_ENUM( label_placement_e, label_placement_enum );
-        
+   
+   enum vertical_alignment
+   {
+      TOP = 0,
+      MIDDLE,
+      BOTTOM,
+      vertical_alignment_MAX
+   };
+
+   DEFINE_ENUM( vertical_alignment_e, vertical_alignment );
+
    typedef boost::tuple<double,double> position;
     
    struct MAPNIK_DECL text_symbolizer
    {		
          text_symbolizer(std::string const& name,std::string const& face_name, 
-                         unsigned size, Color const& fill);	
+                         unsigned size, color const& fill);	
+         text_symbolizer(std::string const& name, unsigned size, color const& fill);	
          text_symbolizer(text_symbolizer const& rhs);
          text_symbolizer& operator=(text_symbolizer const& rhs);
          std::string const& get_name() const;
+         void set_name(std::string name);
          unsigned get_text_ratio() const; // target ratio for text bounding box in pixels
          void set_text_ratio(unsigned ratio);
          unsigned get_wrap_width() const; // width to wrap text at, or trigger ratio
@@ -65,14 +79,21 @@ namespace mapnik
          double get_max_char_angle_delta() const; // maximum change in angle between adjacent characters
          void set_max_char_angle_delta(double angle);
          unsigned get_text_size() const;
+         void set_text_size(unsigned size);
          std::string const& get_face_name() const;
-         Color const& get_fill() const;
-         void set_halo_fill(Color const& fill);
-         Color const& get_halo_fill() const;
+         void set_face_name(std::string face_name);
+         FontSet const& get_fontset() const;
+         void set_fontset(FontSet fontset);
+         color const& get_fill() const;
+         void set_fill(color const& fill);
+         void set_halo_fill(color const& fill);
+         color const& get_halo_fill() const;
          void set_halo_radius(unsigned radius);
          unsigned get_halo_radius() const;
          void set_label_placement(label_placement_e label_p);
          label_placement_e get_label_placement() const;
+         void set_vertical_alignment(vertical_alignment_e valign);
+         vertical_alignment_e get_vertical_alignment() const;
          void set_anchor(double x, double y);	
          position const& get_anchor() const;	
          void set_displacement(double x, double y);
@@ -86,6 +107,7 @@ namespace mapnik
       private:
          std::string name_;
          std::string face_name_;
+         FontSet fontset_;
          unsigned size_;
          unsigned text_ratio_;
          unsigned wrap_width_;
@@ -93,10 +115,11 @@ namespace mapnik
          unsigned label_position_tolerance_;
          bool force_odd_labels_;
          double max_char_angle_delta_;
-         Color fill_;
-         Color halo_fill_;
+         color fill_;
+         color halo_fill_;
          unsigned halo_radius_;
          label_placement_e label_p_;
+         vertical_alignment_e valign_;
          position anchor_;
          position displacement_;
          bool avoid_edges_;

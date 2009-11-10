@@ -26,7 +26,17 @@
 
 using mapnik::line_symbolizer;
 using mapnik::stroke;
-using mapnik::Color;
+using mapnik::color;
+
+struct line_symbolizer_pickle_suite : boost::python::pickle_suite
+{
+   static boost::python::tuple
+   getinitargs(const line_symbolizer& l)
+   {
+      return boost::python::make_tuple(l.get_stroke());
+   }
+
+};
 
 void export_line_symbolizer()
 {
@@ -35,7 +45,8 @@ void export_line_symbolizer()
     class_<line_symbolizer>("LineSymbolizer",
                             init<>("Default LineSymbolizer - 1px solid black"))
         .def(init<stroke const&>("TODO"))
-        .def(init<Color const& ,float>())
+        .def(init<color const& ,float>())
+        .def_pickle(line_symbolizer_pickle_suite())
         .add_property("stroke",make_function
                       (&line_symbolizer::get_stroke,
                        return_value_policy<copy_const_reference>()),

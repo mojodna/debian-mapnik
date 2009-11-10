@@ -30,10 +30,11 @@
 namespace mapnik 
 {
 
-    class symbolizer_with_image {
+    class MAPNIK_DECL symbolizer_with_image {
         public:
             boost::shared_ptr<ImageData32> get_image() const;
             const std::string & get_filename() const;
+            void set_filename(std::string const& image_filename);
             void set_image( boost::shared_ptr<ImageData32> symbol);
 
             virtual ~symbolizer_with_image() {};

@@ -25,6 +25,8 @@
 #ifndef CTRANS_HPP
 #define CTRANS_HPP
 
+#include <algorithm>
+
 #include <mapnik/envelope.hpp>
 #include <mapnik/coord_array.hpp>
 #include <mapnik/proj_transform.hpp>
@@ -124,37 +126,52 @@ namespace mapnik {
    class CoordTransform
    {
       private:
-         int width;
-         int height;
-         double scale_;
+         int width_;
+         int height_;
+         double sx_;
+         double sy_;
          Envelope<double> extent_;
          double offset_x_;
          double offset_y_;
       public:
          CoordTransform(int width,int height,const Envelope<double>& extent,
                         double offset_x = 0, double offset_y = 0)
-            :width(width),height(height),extent_(extent),offset_x_(offset_x),offset_y_(offset_y)
+            :width_(width),height_(height),extent_(extent),offset_x_(offset_x),offset_y_(offset_y)
          {
-            double sx=((double)width)/extent_.width();
-            double sy=((double)height)/extent_.height();
-            scale_=std::min(sx,sy);
+            sx_ = ((double)width_)/extent_.width();
+            sy_ = ((double)height_)/extent_.height();
          }
-	
-         inline double scale() const
+
+         inline int width() const
          {
-            return scale_;
+            return width_;
+         }
+      
+         inline int height() const
+         {
+            return height_;
+         }
+         	
+         inline double scale_x() const
+         {
+            return sx_;
+         }
+      
+         inline double scale_y() const
+         {
+            return sy_;
          }
          
          inline void forward(double * x, double * y) const
          {
-            *x = (*x - extent_.minx()) * scale_ - offset_x_;
-            *y = (extent_.maxy() - *y) * scale_ - offset_y_;
+            *x = (*x - extent_.minx()) * sx_ - offset_x_;
+            *y = (extent_.maxy() - *y) * sy_ - offset_y_;
          }
         
          inline void backward(double * x, double * y) const
          {
-            *x = extent_.minx() + (*x + offset_x_)/scale_;
-            *y = extent_.maxy() - (*y + offset_y_)/scale_;
+            *x = extent_.minx() + (*x + offset_x_)/sx_;
+            *y = extent_.maxy() - (*y + offset_y_)/sy_;
          }
          
          inline coord2d& forward(coord2d& c) const

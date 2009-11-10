@@ -78,7 +78,7 @@ namespace mapnik
             try
             {
                projection proj(m_.srs()); // map projection
-               double scale_denom = scale_denominator(m_,proj.is_geographic());
+               double scale_denom = mapnik::scale_denominator(m_,proj.is_geographic());
 #ifdef MAPNIK_DEBUG
                std::clog << "scale denominator = " << scale_denom << "\n";
 #endif
@@ -109,10 +109,10 @@ namespace mapnik
             boost::shared_ptr<datasource> ds=lay.datasource();
             if (ds)
             {
-               Envelope<double> const& ext=m_.getCurrentExtent();
+               Envelope<double> ext = m_.get_buffered_extent();
                projection proj1(lay.srs());
                proj_transform prj_trans(proj0,proj1);
-
+               
                Envelope<double> layer_ext = lay.envelope();
                double lx0 = layer_ext.minx();
                double ly0 = layer_ext.miny();
@@ -123,6 +123,13 @@ namespace mapnik
                // back project layers extent into main map projection
                prj_trans.backward(lx0,ly0,lz0);
                prj_trans.backward(lx1,ly1,lz1);
+               
+               // if no intersection then nothing to do for layer
+               if ( lx0 > ext.maxx() || lx1 < ext.minx() || ly0 > ext.maxy() || ly1 < ext.miny() )
+               {
+                  return;
+               }
+               
                // clip query bbox
                lx0 = std::max(ext.minx(),lx0);
                ly0 = std::max(ext.miny(),ly0);
@@ -132,6 +139,7 @@ namespace mapnik
                prj_trans.forward(lx0,ly0,lz0);
                prj_trans.forward(lx1,ly1,lz1);
                Envelope<double> bbox(lx0,ly0,lx1,ly1);
+               
                double resolution = m_.getWidth()/bbox.width();
                query q(bbox,resolution); //BBOX query
                
@@ -146,8 +154,11 @@ namespace mapnik
                   std::vector<rule_type*> else_rules;
                     
                   bool active_rules=false;
-                  feature_type_style const& style=m_.find_style(*stylesIter);
-                  const std::vector<rule_type>& rules=style.get_rules();
+                  
+                  boost::optional<feature_type_style const&> style=m_.find_style(*stylesIter);
+                  if (!style) continue;
+                  
+                  const std::vector<rule_type>& rules=(*style).get_rules();
                   std::vector<rule_type>::const_iterator ruleIter=rules.begin();
                   std::vector<rule_type>::const_iterator ruleEnd=rules.end();
                                         

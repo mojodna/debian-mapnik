@@ -1,4 +1,7 @@
-# $Id: rundemo.py 618 2008-01-25 14:40:48Z artem $
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+#
+# $Id: rundemo.py 760 2008-11-16 21:36:23Z artem $
 #
 # This file is part of Mapnik (c++ mapping toolkit)
 # Copyright (C) 2005 Jean-Francois Doyon
@@ -30,7 +33,7 @@ installed successfully before running this script.\n\n'
 # Instanciate a map, giving it a width and height. Remember: the word "map" is
 # reserved in Python! :)
 
-m = Map(800,600,"+proj=latlong +ellps=WGS84")
+m = Map(800,600,"+proj=merc +a=6378137 +b=6378137 +lat_ts=0.0 +lon_0=0.0 +x_0=0.0 +y_0=0 +k=1.0 +units=m +nadgrids=@null +no_defs")
 
 # Set its background colour. More on colours later ...
 
@@ -56,6 +59,7 @@ m.background = Color('white')
 #     table= TODO
 
 provpoly_lyr = Layer('Provinces')
+provpoly_lyr.srs = "+proj=lcc +ellps=GRS80 +lat_0=49 +lon_0=-95 +lat+1=49 +lat_2=77 +datum=NAD83 +units=m +no_defs"
 provpoly_lyr.datasource = Shapefile(file='../data/boundaries', encoding='latin1')
 
 # We then define a style for the layer.  A layer can have one or many styles.
@@ -95,7 +99,7 @@ provpoly_rule_on.symbols.append(PolygonSymbolizer(Color(250, 190, 183)))
 provpoly_style.rules.append(provpoly_rule_on)
 
 provpoly_rule_qc = Rule()
-provpoly_rule_qc.filter = Filter("[NAME_EN] = 'Quebec'")
+provpoly_rule_qc.filter = Filter("[NOM_FR] = 'Québec'")
 provpoly_rule_qc.symbols.append(PolygonSymbolizer(Color(217, 235, 203)))
 provpoly_style.rules.append(provpoly_rule_qc)
 
@@ -120,7 +124,7 @@ m.layers.append(provpoly_lyr)
 # A simple example ...
 
 qcdrain_lyr = Layer('Quebec Hydrography')
-
+qcdrain_lyr.srs = "+proj=lcc +ellps=GRS80 +lat_0=49 +lon_0=-95 +lat+1=49 +lat_2=77 +datum=NAD83 +units=m +no_defs"
 qcdrain_lyr.datasource = Shapefile(file='../data/qcdrainage')
 
 qcdrain_style = Style()
@@ -138,6 +142,7 @@ m.layers.append(qcdrain_lyr)
 # re-use the style defined in the above layer for the next one.
 
 ondrain_lyr = Layer('Ontario Hydrography')
+ondrain_lyr.srs = "+proj=lcc +ellps=GRS80 +lat_0=49 +lon_0=-95 +lat+1=49 +lat_2=77 +datum=NAD83 +units=m +no_defs"
 ondrain_lyr.datasource = Shapefile(file='../data/ontdrainage')
 
 ondrain_lyr.styles.append('drainage')
@@ -146,6 +151,7 @@ m.layers.append(ondrain_lyr)
 # Provincial boundaries
 
 provlines_lyr = Layer('Provincial borders')
+provlines_lyr.srs = "+proj=lcc +ellps=GRS80 +lat_0=49 +lon_0=-95 +lat+1=49 +lat_2=77 +datum=NAD83 +units=m +no_defs"
 provlines_lyr.datasource = Shapefile(file='../data/boundaries_l')
 
 # Here we define a "dash dot dot dash" pattern for the provincial boundaries.
@@ -169,6 +175,7 @@ m.layers.append(provlines_lyr)
 # Roads 3 and 4 (The "grey" roads)
 
 roads34_lyr = Layer('Roads')
+roads34_lyr.srs = "+proj=lcc +ellps=GRS80 +lat_0=49 +lon_0=-95 +lat+1=49 +lat_2=77 +datum=NAD83 +units=m +no_defs"
 # create roads datasource (we're going to re-use it later) 
 
 roads34_lyr.datasource = Shapefile(file='../data/roads')
@@ -202,7 +209,7 @@ m.layers.append(roads34_lyr)
 # Roads 2 (The thin yellow ones)
 
 roads2_lyr = Layer('Roads')
-
+roads2_lyr.srs = "+proj=lcc +ellps=GRS80 +lat_0=49 +lon_0=-95 +lat+1=49 +lat_2=77 +datum=NAD83 +units=m +no_defs"
 # Just get a copy from roads34_lyr
 roads2_lyr.datasource = roads34_lyr.datasource 
 
@@ -238,6 +245,7 @@ m.layers.append(roads2_lyr)
 # Roads 1 (The big orange ones, the highways)
 
 roads1_lyr = Layer('Roads')
+roads1_lyr.srs = "+proj=lcc +ellps=GRS80 +lat_0=49 +lon_0=-95 +lat+1=49 +lat_2=77 +datum=NAD83 +units=m +no_defs"
 roads1_lyr.datasource = roads34_lyr.datasource
 
 roads1_style_1 = Style()
@@ -271,6 +279,7 @@ m.layers.append(roads1_lyr)
 # Populated Places
 
 popplaces_lyr = Layer('Populated Places')
+popplaces_lyr.srs = "+proj=lcc +ellps=GRS80 +lat_0=49 +lon_0=-95 +lat+1=49 +lat_2=77 +datum=NAD83 +units=m +no_defs"
 popplaces_lyr.datasource = Shapefile(file='../data/popplaces',encoding='latin1')
 
 popplaces_style = Style()
@@ -289,6 +298,7 @@ popplaces_text_symbolizer = TextSymbolizer('GEONAME',
 popplaces_text_symbolizer.set_label_placement=label_placement.POINT_PLACEMENT
 popplaces_text_symbolizer.halo_fill = Color('white')
 popplaces_text_symbolizer.halo_radius = 1
+popplaces_text_symbolizer.avoid_edges = True
 popplaces_rule.symbols.append(popplaces_text_symbolizer)
 
 popplaces_style.rules.append(popplaces_rule)
@@ -299,22 +309,37 @@ m.layers.append(popplaces_lyr)
 
 # Draw map
 
-# Set the initial extent of the map.
-
-m.zoom_to_box(Envelope(1405120.04127408,-247003.813399447,1706357.31328276,-25098.593149577))
+# Set the initial extent of the map in 'master' spherical Mercator projection
+m.zoom_to_box(Envelope(-8024477.28459,5445190.38849,-7381388.20071,5662941.44855)) 
 
 # Render two maps, two PNGs, one JPEG.
 im = Image(m.width,m.height)
 render(m, im)
 
 # Save image to files
+images = []
 im.save('demo.png', 'png') # true-colour RGBA
+images.append('demo.png')
 im.save('demo256.png', 'png256') # save to palette based (max 256 colours) png 
+images.append('demo256.png')
 im.save('demo.jpg', 'jpeg')
+images.append('demo.jpg')
 
-print """\n\nThree maps have been rendered in the current directory:
-- demo.jpg
-- demo.png
-- demo256.png
+# Render cairo examples
+try:
+    import cairo
+    surface = cairo.SVGSurface('demo.svg', m.width,m.height)
+    render(m, surface)
+    images.append('demo.svg')
+    surface = cairo.PDFSurface('demo.pdf', m.width,m.height)
+    render(m, surface)
+    images.append('demo.pdf')
+except:
+    print '\n\nSkipping cairo examples as Pycairo not available'
 
-Have a look!\n\n"""
+print "\n\n", len(images), "maps have been rendered in the current directory:"
+for image in images:
+    print "-", image
+print "\n\nHave a look!\n\n"
+
+save_map(m,"map.xml")

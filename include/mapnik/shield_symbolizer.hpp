@@ -39,11 +39,16 @@ namespace mapnik
     shield_symbolizer(std::string const& name,
                       std::string const& face_name,
                       unsigned size,
-                      Color const& fill, 
+                      color const& fill, 
                       std::string const& file,
                       std::string const& type,
                       unsigned width,unsigned height);
-    
+    shield_symbolizer(std::string const& name,
+                      unsigned size,
+                      color const& fill, 
+                      std::string const& file,
+                      std::string const& type,
+                      unsigned width,unsigned height);
   };
 }
 

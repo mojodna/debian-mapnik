@@ -31,13 +31,13 @@ gdal_src = Split(
 	"""
         )
 
-libraries = ['gdal' ]
+libraries = [env['PLUGINS']['gdal']['lib']]
 if env['PLATFORM'] == 'Darwin':
     libraries.append('mapnik')
-    libraries.append('iconv') 
-    if env['BIDI'] : libraries.append('fribidi')
+    libraries.append('icuuc')
+    libraries.append('icudata')
 
 gdal_inputdriver = env.SharedLibrary('gdal', source=gdal_src, SHLIBPREFIX='', SHLIBSUFFIX='.input', LIBS=libraries)
 
-env.Install(install_prefix + '/' + env['LIBDIR_SCHEMA'] + '/mapnik/input', gdal_inputdriver)
-env.Alias('install', install_prefix + '/' + env['LIBDIR_SCHEMA'] + '/mapnik/input')
+env.Install(install_prefix + '/' + env['LIBDIR_SCHEMA'] + env['LIB_DIR_NAME'] + '/input', gdal_inputdriver)
+env.Alias('install', install_prefix + '/' + env['LIBDIR_SCHEMA'] + env['LIB_DIR_NAME'] + '/input')

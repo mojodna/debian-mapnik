@@ -33,7 +33,7 @@
 
 using boost::lexical_cast;
 using boost::bad_lexical_cast;
-using boost::trim;
+using boost::trim_copy;
 using std::string;
 using mapnik::Feature;
 using mapnik::geometry2d;
@@ -81,7 +81,7 @@ std::string numeric2string(const char* buf)
    return ss.str();
 }
 
-postgis_featureset::postgis_featureset(boost::shared_ptr<ResultSet> const& rs,
+postgis_featureset::postgis_featureset(boost::shared_ptr<IResultSet> const& rs,
                                        std::string const& encoding,
                                        bool multiple_geometries,
                                        unsigned num_attrs=0)
@@ -105,56 +105,67 @@ feature_ptr postgis_featureset::next()
         for (unsigned pos=1;pos<num_attrs_+1;++pos)
         {
            std::string name = rs_->getFieldName(pos);
-           const char* buf=rs_->getValue(pos);
-           int oid = rs_->getTypeOID(pos);
+
+           if (!rs_->isNull(pos))
+           {
+              const char* buf=rs_->getValue(pos);
+              int oid = rs_->getTypeOID(pos);
            
-           if (oid==23) //int4
-           {
-              int val = int4net(buf);
-              boost::put(*feature,name,val);
-           }
-           else if (oid==21) //int2
-           {
-              int val = int2net(buf);
-              boost::put(*feature,name,val);
-           }
-           else if (oid == 700) // float4
-           {
-              float val;
-              float4net(val,buf);
-              boost::put(*feature,name,val);
-           }
-           else if (oid == 701) // float8
-           {
-              double val;
-              float8net(val,buf);
-              boost::put(*feature,name,val);
-           }
-           else if (oid==25 || oid==1042 || oid==1043) // text or bpchar or varchar
-           {
-              std::string str(buf);
-              trim(str);
-              std::wstring wstr = tr_->transcode(str);
-              boost::put(*feature,name,wstr);
-           }
-           else if (oid == 1700) // numeric
-           {
-              std::string str = numeric2string(buf);
-              try 
+              if (oid==16) //bool
               {
-                 double val = boost::lexical_cast<double>(str);
+                 boost::put(*feature,name,buf[0] != 0);
+              }
+              else if (oid==23) //int4
+              {
+                 int val = int4net(buf);
                  boost::put(*feature,name,val);
               }
-              catch (boost::bad_lexical_cast & ex)
+              else if (oid==21) //int2
               {
-                 std::clog << ex.what() << "\n"; 
+                 int val = int2net(buf);
+                 boost::put(*feature,name,val);
               }
-           }
-           else 
-           {
+              else if (oid == 700) // float4
+              {
+                 float val;
+                 float4net(val,buf);
+                 boost::put(*feature,name,val);
+              }
+              else if (oid == 701) // float8
+              {
+                 double val;
+                 float8net(val,buf);
+                 boost::put(*feature,name,val);
+              }
+              else if (oid==25 || oid==1043) // text or varchar
+              {
+                 UnicodeString ustr = tr_->transcode(buf);
+                 boost::put(*feature,name,ustr);
+              }
+              else if (oid==1042)
+              {
+                 UnicodeString ustr = tr_->transcode(trim_copy(string(buf)).c_str()); // bpchar
+                 boost::put(*feature,name,ustr);
+              }
+              else if (oid == 1700) // numeric
+              {
+                 std::string str = numeric2string(buf);
+                 try 
+                 {
+                    double val = boost::lexical_cast<double>(str);
+                    boost::put(*feature,name,val);
+                 }
+                 catch (boost::bad_lexical_cast & ex)
+                 {
+                    std::clog << ex.what() << "\n"; 
+                 }
+              }
+              else 
+              {
 #ifdef MAPNIK_DEBUG
-              std::clog << "uknown OID = " << oid << " FIXME \n";
+                 std::clog << "uknown OID = " << oid << " FIXME \n";
 #endif
+              }
            }
         }
         ++count_;   

@@ -29,6 +29,7 @@
 #include <mapnik/layer.hpp>
 #include <mapnik/datasource_cache.hpp>
 #include <mapnik/font_engine_freetype.hpp>
+#include <mapnik/font_set.hpp>
 
 #include <mapnik/ptree_helpers.hpp>
 #include <mapnik/libxml2_loader.hpp>
@@ -41,6 +42,8 @@
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/xml_parser.hpp>
 #include <boost/static_assert.hpp>
+#include <boost/filesystem/operations.hpp>
+
 // stl
 #include <iostream>
 
@@ -58,15 +61,20 @@ namespace mapnik
 
    class map_parser : boost::noncopyable {
       public:
-         map_parser( bool strict ) : 
+         map_parser( bool strict, std::string const& filename = "" ) : 
             strict_( strict ),
+            filename_( filename ),
+            relative_to_xml_(true),
             font_manager_(font_engine_) {}
          
          void parse_map( Map & map, ptree const & sty);
       private:
          void parse_style( Map & map, ptree const & sty);
          void parse_layer( Map & map, ptree const & lay);
-         
+        
+         void parse_fontset(Map & map, ptree const & fset);
+         void parse_font(FontSet & fset, ptree const & f);
+     
          void parse_rule( feature_type_style & style, ptree const & r);
          
          void parse_point_symbolizer( rule_type & rule, ptree const & sym);
@@ -77,15 +85,21 @@ namespace mapnik
          void parse_line_symbolizer( rule_type & rule, ptree const & sym);
          void parse_polygon_symbolizer( rule_type & rule, ptree const & sym);
          void parse_building_symbolizer( rule_type & rule, ptree const & sym );
+         void parse_raster_symbolizer( rule_type & rule, ptree const & sym );
          void parse_markers_symbolizer( rule_type & rule, ptree const & sym );
          
-         void ensure_font_face( const text_symbolizer & text_symbol );
+         void ensure_font_face( const std::string & face_name );
+         
+         std::string ensure_relative_to_xml( boost::optional<std::string> opt_path );
          
          bool strict_;
+         std::string filename_;
+         bool relative_to_xml_;
          std::map<std::string,parameters> datasource_templates_;
          freetype_engine font_engine_;
          face_manager<freetype_engine> font_manager_;
          std::map<std::string,std::string> file_sources_;
+         std::map<std::string,FontSet> fontsets_;
     };
 
     void load_map(Map & map, std::string const& filename, bool strict)
@@ -103,6 +117,26 @@ namespace mapnik
             throw config_error( ex.what() );
         }
 #endif
+        map_parser parser( strict, filename);
+        parser.parse_map(map, pt);
+    }
+
+    void load_map_string(Map & map, std::string const& str, bool strict)
+    {
+        ptree pt;
+#ifdef HAVE_LIBXML2
+        read_xml2_string(str, pt);
+#else
+        try 
+        {
+           std::istringstream s(str);
+           read_xml(s,pt);
+        }
+        catch (const boost::property_tree::xml_parser_error & ex)
+        {
+           throw config_error( ex.what() ) ;
+        }
+#endif
 
         map_parser parser( strict );
         parser.parse_map(map, pt);
@@ -116,12 +150,27 @@ namespace mapnik
 
             try
             {
-                optional<Color> bgcolor = get_opt_attr<Color>(map_node, "bgcolor");
+                optional<color> bgcolor = get_opt_attr<color>(map_node, "bgcolor");
                 if (bgcolor) {
                     map.set_background( * bgcolor );
                 }
 
                 map.set_srs( get_attr(map_node, "srs", map.srs() ));
+
+                optional<unsigned> buffer_size = get_opt_attr<unsigned>(map_node,"buffer_size");
+                if (buffer_size)
+                {
+                   map.set_buffer_size(*buffer_size);
+                }
+
+                // Check if relative paths should be interpreted as relative to/from XML location
+                // Default is true, and map_parser::ensure_relative_to_xml will be called to modify path
+                optional<boolean> paths_from_xml = get_opt_attr<boolean>(map_node, "paths_from_xml");
+                if (paths_from_xml)
+                {
+                    relative_to_xml_ = *paths_from_xml;
+                }
+
             }
             catch (const config_error & ex)
             {
@@ -142,8 +191,11 @@ namespace mapnik
                 }
                 else if (v.first == "Layer")
                 {
-
                     parse_layer(map, v.second );
+                }
+                else if (v.first == "FontSet")
+                {
+                    parse_fontset(map, v.second);
                 }
                 else if (v.first == "FileSource")
                 {
@@ -168,7 +220,8 @@ namespace mapnik
                                     "datasource parameter");
                             params[name] = value; 
                         }
-                        else if( paramIter->first != "<xmlattr>" )
+                        else if( paramIter->first != "<xmlattr>" &&
+                            paramIter->first != "<xmlcomment>" )
                         {
                             throw config_error(std::string("Unknown child node in ") +
                                     "'Datasource'. Expected 'Parameter' but got '" +
@@ -212,7 +265,7 @@ namespace mapnik
                 else if (rule_tag.first != "<xmlcomment>" &&
                         rule_tag.first != "<xmlattr>" )
                 {
-                    throw config_error(std::string("Unknown child node in 'Style'.") +
+                    throw config_error(std::string("Unknown child node in 'Style'. ") +
                             "Expected 'Rule' but got '" + rule_tag.first + "'");
                 }
             }
@@ -227,12 +280,65 @@ namespace mapnik
         }
     }
 
+    void map_parser::parse_fontset( Map & map, ptree const & fset )
+    {
+        string name("<missing name>");
+        try
+        {
+            name = get_attr<string>(fset, "name");
+            FontSet fontset(name);
+
+            ptree::const_iterator itr = fset.begin();
+            ptree::const_iterator end = fset.end();
+
+            for (; itr != end; ++itr)    
+            {
+                ptree::value_type const& font_tag = *itr;
+
+                if (font_tag.first == "Font")
+                {
+                    parse_font(fontset, font_tag.second);
+                }
+                else if (font_tag.first != "<xmlcomment>" &&
+                    font_tag.first != "<xmlattr>" )
+                {
+                    throw config_error(std::string("Unknown child node in 'FontSet'. ") +
+                        "Expected 'Font' but got '" + font_tag.first + "'");
+                }
+            }
+
+            map.insert_fontset(name, fontset);
+				
+            // XXX Hack because map object isn't accessible by text_symbolizer 
+            // when it's parsed
+            fontsets_.insert(pair<std::string, FontSet>(name, fontset));
+        } catch (const config_error & ex) {
+            if ( ! name.empty() ) {
+                ex.append_context(string("in FontSet '") + name + "'");
+            }
+            throw;
+        }
+    }
+
+    void map_parser::parse_font(FontSet & fset, ptree const & f)
+	{
+        std::string face_name = get_attr(f, "face_name", string());
+
+        if ( strict_ )
+        {
+            ensure_font_face( face_name );
+        }
+
+        fset.add_face_name(face_name);
+	 }
+
     void map_parser::parse_layer( Map & map, ptree const & lay )
     {
         std::string name;
         try
         {
             name = get_attr(lay, "name", string("Unnamed"));
+            
             // XXX if no projection is given inherit from map? [DS]
             std::string srs = get_attr(lay, "srs", map.srs());
 
@@ -244,6 +350,36 @@ namespace mapnik
                 lyr.setActive( * status );
             }
 
+            optional<std::string> title =  get_opt_attr<string>(lay, "title");
+            if (title)
+            {
+                lyr.set_title( * title );
+            }
+
+            optional<std::string> abstract =  get_opt_attr<string>(lay, "abstract");
+            if (abstract)
+            {
+                lyr.set_abstract( * abstract );
+            }
+
+            optional<double> minZoom = get_opt_attr<double>(lay, "minzoom");
+            if (minZoom)
+            {
+                lyr.setMinZoom( * minZoom );
+            }
+
+            optional<double> maxZoom = get_opt_attr<double>(lay, "maxzoom");
+            if (maxZoom)
+            {
+                lyr.setMaxZoom( * maxZoom );
+            }
+
+            optional<boolean> queryable = get_opt_attr<boolean>(lay, "queryable");
+            if (queryable)
+            {
+                lyr.setQueryable( * queryable );
+            }
+                                    
             optional<boolean> clear_cache =
                 get_opt_attr<boolean>(lay, "clear_label_cache");
             if (clear_cache)
@@ -288,23 +424,56 @@ namespace mapnik
                                     "datasource parameter");
                             params[name] = value; 
                         }
-                        else if( paramIter->first != "<xmlattr>" )
+                        else if( paramIter->first != "<xmlattr>"  &&
+                            paramIter->first != "<xmlcomment>" )
                         {
                             throw config_error(std::string("Unknown child node in ") +
                                     "'Datasource'. Expected 'Parameter' but got '" +
                                     paramIter->first + "'");
                         }
                     }
-                    //now we're ready to create datasource 
+                                                                          
+                    if ( relative_to_xml_ ) {
+                        boost::optional<std::string> base_param = params.get<std::string>("base");
+                        boost::optional<std::string> file_param = params.get<std::string>("file");
+                        
+                        if (base_param){
+                            params["base"] = ensure_relative_to_xml(base_param);
+                        }
+                        
+                        else if (file_param){
+                            params["file"] = ensure_relative_to_xml(file_param);
+                        }
+                    }
+                    #ifdef MAPNIK_DEBUG
+                    else {
+                      std::clog << "\nFound relative paths in xml, leaving unchanged...\n";
+                    }
+                    #endif
+                    
+                    //now we are ready to create datasource 
                     try 
                     {
                         boost::shared_ptr<datasource> ds =
                             datasource_cache::instance()->create(params);
                         lyr.set_datasource(ds);
                     }
+                    
+                    // catch problem at datasource registration
+                    catch (const mapnik::config_error & ex )
+                    {
+                        throw config_error( ex.what() );
+                    }
+                    
+                    // catch problem at the datasource creation
                     catch (const mapnik::datasource_exception & ex )
                     {
                         throw config_error( ex.what() );
+                    }
+                    
+                    catch (...)
+                    {
+                       //throw config_error("exception...");
                     }
                 }
                 else if (child.first != "<xmlattr>" &&
@@ -340,9 +509,10 @@ namespace mapnik
                 get_opt_child<string>( r, "Filter");
             if (filter_expr)
             {
-                rule.set_filter(create_filter(*filter_expr));
+               // can we use encoding defined for XML document for filter expressions?
+               rule.set_filter(create_filter(*filter_expr,"utf8"));
             }
-
+            
             optional<std::string> else_filter = 
                 get_opt_child<string>(r, "ElseFilter");
             if (else_filter)
@@ -405,7 +575,7 @@ namespace mapnik
                 } 
                 else if ( sym.first == "RasterSymbolizer")
                 {
-                    rule.append(raster_symbolizer());
+                    parse_raster_symbolizer( rule, sym.second );
                 } 
                 else if ( sym.first == "MarkersSymbolizer")
                 {
@@ -446,6 +616,8 @@ namespace mapnik
             optional<std::string> type =  get_opt_attr<string>(sym, "type"); 
             optional<boolean> allow_overlap = 
                 get_opt_attr<boolean>(sym, "allow_overlap");
+            optional<float> opacity = 
+                get_opt_attr<float>(sym, "opacity");
 
             optional<unsigned> width = get_opt_attr<unsigned>(sym, "width"); 
             optional<unsigned> height = get_opt_attr<unsigned>(sym, "height"); 
@@ -462,11 +634,26 @@ namespace mapnik
                          *file = itr->second + "/" + *file;
                       }
                    }
+                  
+                   if ( relative_to_xml_ )
+                   {    
+                      *file = ensure_relative_to_xml(file);
+                   }
+                   #ifdef MAPNIK_DEBUG
+                   else {
+                     std::clog << "\nFound relative paths in xml, leaving unchanged...\n";
+                   }
+                   #endif
+                
                    point_symbolizer symbol(*file,*type,*width,*height);
                    if (allow_overlap)
                    {
                       symbol.set_allow_overlap( * allow_overlap );
                    }
+                   if (opacity)
+                   {
+                      symbol.set_opacity( * opacity );
+                   }			
                    rule.append(symbol);
                 }
                 catch (ImageReaderException const & ex )
@@ -526,7 +713,19 @@ namespace mapnik
                       file = itr->second + "/" + file;
                    }
                }
-               rule.append(line_pattern_symbolizer(file,type,width,height));
+               if ( relative_to_xml_ )
+               {    
+                  file = ensure_relative_to_xml(file);
+               }
+               #ifdef MAPNIK_DEBUG
+               else {
+                 std::clog << "\nFound relative paths in xml, leaving unchanged...\n";
+               }
+               #endif
+                
+
+               line_pattern_symbolizer symbol(file,type,width,height);
+               rule.append(symbol);
             }
             catch (ImageReaderException const & ex )
             {
@@ -570,7 +769,18 @@ namespace mapnik
                       file = itr->second + "/" + file;
                    }
                 }
-                rule.append(polygon_pattern_symbolizer(file,type,width,height)); 
+                if ( relative_to_xml_ )
+                {    
+                   file = ensure_relative_to_xml(file);
+                }
+                #ifdef MAPNIK_DEBUG
+                else {
+                  std::clog << "\nFound relative paths in xml, leaving unchanged...\n";
+                }
+                #endif
+
+                polygon_pattern_symbolizer symbol(file,type,width,height);
+                rule.append(symbol);
             }
             catch (ImageReaderException const & ex )
             {
@@ -598,23 +808,61 @@ namespace mapnik
         try
         {
             std::string name = get_attr<string>(sym, "name"); 
-            std::string face_name =  get_attr<string>(sym, "face_name");
-            unsigned size = get_attr(sym, "size", 10U );
 
-            Color c = get_attr(sym, "fill", Color(0,0,0));
+            optional<std::string> face_name =
+                 get_opt_attr<std::string>(sym, "face_name");
+            
+            optional<std::string> fontset_name =
+                 get_opt_attr<std::string>(sym, "fontset_name");
 
-            text_symbolizer text_symbol(name, face_name, size, c);
+            unsigned size = get_attr(sym, "size", 10U);
 
-            int dx = get_attr(sym, "dx", 0);
-            int dy = get_attr(sym, "dy", 0);
+            color c = get_attr(sym, "fill", color(0,0,0));
+            
+            text_symbolizer text_symbol = text_symbolizer(name, size, c);                
+            
+            if (fontset_name && face_name)
+            {
+                throw config_error(std::string("Can't have both face_name and fontset_name"));
+            }
+            else if (fontset_name)
+            {
+                std::map<std::string,FontSet>::const_iterator itr = fontsets_.find(*fontset_name);
+                if (itr != fontsets_.end())
+                {
+                    text_symbol.set_fontset(itr->second);                
+                }
+                else
+                {
+                    throw config_error("Unable to find any fontset named '" + *fontset_name + "'");
+                }
+            }
+            else if (face_name)
+            {
+                if ( strict_ )
+                {
+                    ensure_font_face(*face_name);
+                }
+                text_symbol.set_face_name(*face_name);
+            }
+            else
+            {
+                throw config_error(std::string("Must have face_name or fontset_name"));
+            }
+
+            int dx = get_attr(sym, "dx", 0.0);
+            int dy = get_attr(sym, "dy", 0.0);
             text_symbol.set_displacement(dx,dy);
 
             label_placement_e placement =
                     get_attr<label_placement_e>(sym, "placement", POINT_PLACEMENT);
             text_symbol.set_label_placement( placement );
+            // vertical alignment 
+            vertical_alignment_e valign = get_attr<vertical_alignment_e>(sym, "vertical_alignment", BOTTOM);
 
+            text_symbol.set_vertical_alignment(valign);  
             // halo fill and radius
-            optional<Color> halo_fill = get_opt_attr<Color>(sym, "halo_fill");
+            optional<color> halo_fill = get_opt_attr<color>(sym, "halo_fill");
             if (halo_fill)
             {
                 text_symbol.set_halo_fill( * halo_fill );
@@ -652,7 +900,7 @@ namespace mapnik
                 text_symbol.set_minimum_distance(*min_distance);
             }
 
-            // don't render labels around edges
+            // do not render labels around edges
             optional<boolean> avoid_edges =
                 get_opt_attr<boolean>(sym, "avoid_edges");
             if (avoid_edges)
@@ -676,11 +924,6 @@ namespace mapnik
                text_symbol.set_max_char_angle_delta( * max_char_angle_delta);
             }
                
-            if ( strict_ )
-            {
-                ensure_font_face( text_symbol );
-            }
-
             rule.append(text_symbol);
         }
         catch (const config_error & ex) 
@@ -695,9 +938,15 @@ namespace mapnik
         try
         {
             std::string name =  get_attr<string>(sym, "name");
-            std::string face_name =  get_attr<string>(sym, "face_name");
+
+            optional<std::string> face_name =
+                 get_opt_attr<std::string>(sym, "face_name");
+
+            optional<std::string> fontset_name =
+                 get_opt_attr<std::string>(sym, "fontset_name");
+
             unsigned size = get_attr(sym, "size", 10U);
-            Color fill = get_attr(sym, "fill", Color(0,0,0));
+            color fill = get_attr(sym, "fill", color(0,0,0));
 
             std::string image_file = get_attr<string>(sym, "file");
             optional<std::string> base = get_opt_attr<string>(sym, "base");
@@ -715,8 +964,77 @@ namespace mapnik
                        image_file = itr->second + "/" + image_file;
                     }
                 }
-                shield_symbolizer shield_symbol(name,face_name,size,fill,
+                
+                if ( relative_to_xml_ )
+                {    
+                   image_file = ensure_relative_to_xml(image_file);
+                }
+                #ifdef MAPNIK_DEBUG
+                else {
+                  std::clog << "\nFound relative paths in xml, leaving unchanged...\n";
+                }
+                #endif
+                
+                shield_symbolizer shield_symbol(name,size,fill,
                                                 image_file,type,width,height);
+
+                if (fontset_name && face_name)
+                {
+                    throw config_error(std::string("Can't have both face_name and fontset_name"));
+                }
+                else if (fontset_name)
+                {
+                    std::map<std::string,FontSet>::const_iterator itr = fontsets_.find(*fontset_name);
+                    if (itr != fontsets_.end())
+                    {
+                        shield_symbol.set_fontset(itr->second);                
+                    }
+                    else
+                    {
+                        throw config_error("Unable to find any fontset named '" + *fontset_name + "'");
+                    }
+                }
+                else if (face_name)
+                {
+                    if ( strict_ )
+                    {
+                        ensure_font_face(*face_name);
+                    }
+                    shield_symbol.set_face_name(*face_name);
+                }
+                else
+                {
+                    throw config_error(std::string("Must have face_name or fontset_name"));
+                }
+                // text displacement
+                int dx = get_attr(sym, "dx", 0.0);
+                int dy = get_attr(sym, "dy", 0.0);
+                shield_symbol.set_displacement(dx,dy);
+                
+                label_placement_e placement =
+                   get_attr<label_placement_e>(sym, "placement", POINT_PLACEMENT);
+                shield_symbol.set_label_placement( placement );
+
+               // don't render shields around edges
+                optional<boolean> avoid_edges =
+                   get_opt_attr<boolean>(sym, "avoid_edges");
+                if (avoid_edges)
+                {
+                   shield_symbol.set_avoid_edges( *avoid_edges);
+                }
+                
+                // halo fill and radius
+                optional<color> halo_fill = get_opt_attr<color>(sym, "halo_fill");
+                if (halo_fill)
+                {
+                   shield_symbol.set_halo_fill( * halo_fill );
+                }
+                optional<unsigned> halo_radius = 
+                   get_opt_attr<unsigned>(sym, "halo_radius");
+                if (halo_radius)
+                {
+                   shield_symbol.set_halo_radius(*halo_radius);
+                }
                 
                 // minimum distance between labels
                 optional<unsigned> min_distance = 
@@ -725,6 +1043,14 @@ namespace mapnik
                 {
                     shield_symbol.set_minimum_distance(*min_distance);
                 }
+            
+                // spacing between repeated labels on lines
+                optional<unsigned> spacing = get_opt_attr<unsigned>(sym, "spacing");
+                if (spacing)
+                {
+                    shield_symbol.set_label_spacing(*spacing);
+                }
+                
                 rule.append(shield_symbol);
             }
             catch (ImageReaderException const & ex )
@@ -759,69 +1085,85 @@ namespace mapnik
 
             for(; cssIter != endCss; ++cssIter)
             {
+                ptree::value_type const& css_tag = *cssIter;
                 ptree const & css = cssIter->second;
-                std::string css_name  = get_attr<string>(css, "name");
-                if (css_name == "stroke")
+
+                if (css_tag.first == "CssParameter")
                 {
-                    Color c = get_css<Color>(css, css_name);
-                    strk.set_color(c);
-                }
-                else if (css_name == "stroke-width")
-                {
-                    float width = get_css<float>(css, css_name);
-                    strk.set_width(width);
-                }
-                else if (css_name == "stroke-opacity")
-                {
-                    float opacity = get_css<float>(css, css_name);
-                    strk.set_opacity(opacity);
-                }
-                else if (css_name == "stroke-linejoin")
-                {
-                    line_join_e line_join = get_css<line_join_e>(css, css_name);
-                    strk.set_line_join( line_join );
-                }
-                else if (css_name == "stroke-linecap")
-                {
-                    line_cap_e line_cap = get_css<line_cap_e>(css, css_name);
-                    strk.set_line_cap( line_cap );
-                }
-                else if (css_name == "stroke-dasharray")
-                {
-                    tokenizer<> tok ( css.data() );
-                    std::vector<float> dash_array;
-                    tokenizer<>::iterator itr = tok.begin();
-                    for (; itr != tok.end(); ++itr)
+                    std::string css_name  = get_attr<string>(css, "name");
+                    if (css_name == "stroke")
                     {
-                        try 
-                        {
-                            float f = boost::lexical_cast<float>(*itr);
-                            dash_array.push_back(f);
-                        }
-                        catch ( boost::bad_lexical_cast &)
-                        {
-                            throw config_error(std::string("Failed to parse CSS ") +
-                                    "parameter '" + css_name + "'. Expected a " +
-                                    "list of floats but got '" + css.data() + "'");
-                        }
+                        color c = get_css<color>(css, css_name);
+                        strk.set_color(c);
                     }
-                    if (dash_array.size())
+                    else if (css_name == "stroke-width")
                     {
-                        size_t size = dash_array.size();
-                        if ( size % 2) 
-                        { 
-                            for (size_t i=0; i < size ;++i)
+                        float width = get_css<float>(css, css_name);
+                        strk.set_width(width);
+                    }
+                    else if (css_name == "stroke-opacity")
+                    {
+                        float opacity = get_css<float>(css, css_name);
+                        strk.set_opacity(opacity);
+                    }
+                    else if (css_name == "stroke-linejoin")
+                    {
+                        line_join_e line_join = get_css<line_join_e>(css, css_name);
+                        strk.set_line_join( line_join );
+                    }
+                    else if (css_name == "stroke-linecap")
+                    {
+                        line_cap_e line_cap = get_css<line_cap_e>(css, css_name);
+                        strk.set_line_cap( line_cap );
+                    }
+                    else if (css_name == "stroke-dasharray")
+                    {
+                        tokenizer<> tok ( css.data() );
+                        std::vector<float> dash_array;
+                        tokenizer<>::iterator itr = tok.begin();
+                        for (; itr != tok.end(); ++itr)
+                        {
+                            try
                             {
-                                dash_array.push_back(dash_array[i]);
+                                float f = boost::lexical_cast<float>(*itr);
+                                dash_array.push_back(f);
+                            }
+                            catch ( boost::bad_lexical_cast &)
+                            {
+                                throw config_error(std::string("Failed to parse CSS ") +
+                                        "parameter '" + css_name + "'. Expected a " +
+                                        "list of floats but got '" + css.data() + "'");
                             }
                         }
-                        std::vector<float>::const_iterator pos = dash_array.begin();
-                        while (pos != dash_array.end())
+                        if (dash_array.size())
                         {
-                            strk.add_dash(*pos,*(pos + 1));
-                            pos +=2;
+                            size_t size = dash_array.size();
+                            if ( size % 2)
+                            {
+                                for (size_t i=0; i < size ;++i)
+                                {
+                                    dash_array.push_back(dash_array[i]);
+                                }
+                            }
+                            std::vector<float>::const_iterator pos = dash_array.begin();
+                            while (pos != dash_array.end())
+                            {
+                                strk.add_dash(*pos,*(pos + 1));
+                                pos +=2;
+                            }
                         }
                     }
+                    else
+                    {
+                        throw config_error(std::string("Failed to parse unknown CSS ") +
+                                "parameter '" + css_name + "'");
+                    }
+                }
+                else if (css_tag.first != "<xmlcomment>" &&
+                        css_tag.first != "<xmlattr>" )
+                {
+                    throw config_error(std::string("Unknown child node. ") +
+                            "Expected 'CssParameter' but got '" + css_tag.first + "'");
                 }
             }
             rule.append(line_symbolizer(strk));
@@ -845,17 +1187,33 @@ namespace mapnik
 
             for(; cssIter != endCss; ++cssIter)
             {
+                ptree::value_type const& css_tag = *cssIter;
                 ptree const & css = cssIter->second;
-                std::string css_name  = get_attr<string>(css, "name");
-                if (css_name == "fill")
+
+                if (css_tag.first == "CssParameter")
                 {
-                    Color c = get_css<Color>(css, css_name);
-                    poly_sym.set_fill(c);
+                    std::string css_name  = get_attr<string>(css, "name");
+                    if (css_name == "fill")
+                    {
+                        color c = get_css<color>(css, css_name);
+                        poly_sym.set_fill(c);
+                    }
+                    else if (css_name == "fill-opacity")
+                    {
+                        float opacity = get_css<float>(css, css_name);
+                        poly_sym.set_opacity(opacity);
+                    }
+                    else
+                    {
+                        throw config_error(std::string("Failed to parse unknown CSS ") +
+                                "parameter '" + css_name + "'");
+                    }
                 }
-                else if (css_name == "fill-opacity")
+                else if (css_tag.first != "<xmlcomment>" &&
+                        css_tag.first != "<xmlattr>" )
                 {
-                    float opacity = get_css<float>(css, css_name);
-                    poly_sym.set_opacity(opacity);
+                    throw config_error(std::string("Unknown child node. ") +
+                            "Expected 'CssParameter' but got '" + css_tag.first + "'");
                 }
             }
             rule.append(poly_sym);
@@ -879,24 +1237,39 @@ namespace mapnik
 
             for(; cssIter != endCss; ++cssIter)
             {
-                ptree const& css = cssIter->second;
+                ptree::value_type const& css_tag = *cssIter;
+                ptree const & css = cssIter->second;
 
-                std::string css_name  = get_attr<string>(css, "name");
-                std::string data = css.data();
-                if (css_name == "fill")
+                if (css_tag.first == "CssParameter")
                 {
-                    Color c = get_css<Color>(css, css_name);
-                    building_sym.set_fill(c);
+                    std::string css_name  = get_attr<string>(css, "name");
+                    std::string data = css.data();
+                    if (css_name == "fill")
+                    {
+                        color c = get_css<color>(css, css_name);
+                        building_sym.set_fill(c);
+                    }
+                    else if (css_name == "fill-opacity")
+                    {
+                        float opacity = get_css<float>(css, css_name);
+                        building_sym.set_opacity(opacity);
+                    }
+                    else if (css_name == "height")
+                    {
+                       float height = get_css<float>(css,css_name);
+                       building_sym.set_height(height);
+                    }
+                    else
+                    {
+                        throw config_error(std::string("Failed to parse unknown CSS ") +
+                                "parameter '" + css_name + "'");
+                    }
                 }
-                else if (css_name == "fill-opacity")
+                else if (css_tag.first != "<xmlcomment>" &&
+                        css_tag.first != "<xmlattr>" )
                 {
-                    float opacity = get_css<float>(css, css_name);
-                    building_sym.set_opacity(opacity);
-                }
-                else if (css_name == "height")
-                {
-                   float height = get_css<float>(css,css_name);
-                   building_sym.set_height(height);
+                    throw config_error(std::string("Unknown child node. ") +
+                            "Expected 'CssParameter' but got '" + css_tag.first + "'");
                 }
             }
             rule.append(building_sym);
@@ -908,12 +1281,81 @@ namespace mapnik
         }
     } 
 
-    void map_parser::ensure_font_face( const text_symbolizer & text_symbol )
+    void map_parser::parse_raster_symbolizer( rule_type & rule, ptree const & sym )
     {
-        if ( ! font_manager_.get_face( text_symbol.get_face_name() ) )
+        try
         {
-            throw config_error("Failed to find font face '" +
-                    text_symbol.get_face_name() + "'");
+            raster_symbolizer raster_sym;
+
+            ptree::const_iterator cssIter = sym.begin();
+            ptree::const_iterator endCss = sym.end();
+
+            for(; cssIter != endCss; ++cssIter)
+            {
+                ptree::value_type const& css_tag = *cssIter;
+                ptree const & css = cssIter->second;
+
+                if (css_tag.first == "CssParameter")
+                {
+                    std::string css_name  = get_attr<string>(css, "name");
+                    if (css_name == "mode")
+                    {
+                        raster_sym.set_mode(get_css<string>(css, css_name));
+                    }
+                    else if (css_name == "scaling")
+                    {
+                        raster_sym.set_scaling(get_css<string>(css, css_name));
+                    }
+                    else if (css_name == "opacity")
+                    {
+                        float opacity = get_css<float>(css, css_name);
+                        raster_sym.set_opacity(opacity);
+                    }
+                    else
+                    {
+                        throw config_error(std::string("Failed to parse unknown CSS ") +
+                                "parameter '" + css_name + "'");
+                    }
+                }
+                else if (css_tag.first != "<xmlcomment>" &&
+                        css_tag.first != "<xmlattr>" )
+                {
+                    throw config_error(std::string("Unknown child node. ") +
+                            "Expected 'CssParameter' but got '" + css_tag.first + "'");
+                }
+            }
+            rule.append(raster_sym);
+        }
+        catch (const config_error & ex)
+        {
+            ex.append_context("in RasterSymbolizer");
+            throw;
         }
     }
+
+    void map_parser::ensure_font_face( const std::string & face_name )
+    {
+        if ( ! font_manager_.get_face( face_name ) )
+        {
+            throw config_error("Failed to find font face '" +
+                    face_name + "'");
+        }
+    }
+    
+    std::string map_parser::ensure_relative_to_xml( boost::optional<std::string> opt_path )
+    {
+        boost::filesystem::path xml_path = filename_;
+        boost::filesystem::path rel_path = *opt_path;
+        if ( !rel_path.has_root_path() ) {
+            boost::filesystem::path full = boost::filesystem::complete(xml_path.branch_path()/rel_path).normalize();
+            #ifdef MAPNIK_DEBUG
+              std::clog << "\nModifying relative paths to be relative to xml...\n";
+              std::clog << "original base path: " << *opt_path << "\n";
+              std::clog << "relative base path: " << full.string() << "\n";
+            #endif
+            return full.string();
+        }
+        return *opt_path;
+    }
+
 } // end of namespace mapnik

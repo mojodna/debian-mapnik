@@ -17,14 +17,22 @@
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
-# $Id: wms111.py 458 2007-03-05 03:20:35Z jfdoyon $
+# $Id: wms111.py 1085 2009-04-09 18:40:39Z dane $
+
+"""WMS 1.1.1 compliant GetCapabilities, GetMap, GetFeatureInfo, and Exceptions interface."""
 
 from common import ParameterDefinition, Response, Version, ListFactory, \
                    ColorFactory, CRSFactory, WMSBaseServiceHandler, CRS, \
                    BaseExceptionHandler, Projection
 from exceptions import OGCException, ServerConfigurationError
-from lxml import etree as ElementTree
 from mapnik import Coord
+
+try:
+    from lxml import etree as ElementTree
+except ImportError:
+    import xml.etree.ElementTree as ElementTree
+except ImportError:
+    import elementtree.ElementTree as ElementTree
 
 class ServiceHandler(WMSBaseServiceHandler):
 
@@ -42,7 +50,7 @@ class ServiceHandler(WMSBaseServiceHandler):
             'format': ParameterDefinition(True, str, allowedvalues=('image/png', 'image/jpeg')),
             'transparent': ParameterDefinition(False, str, 'FALSE', ('TRUE', 'FALSE')),
             'bgcolor': ParameterDefinition(False, ColorFactory, ColorFactory('0xFFFFFF')),
-            'exceptions': ParameterDefinition(False, str, 'application/vnd.ogc.se_xml', ('application/vnd.ogc.se_xml', 'application/vnd.ogc.se_inimage', 'application/vnd.ogc.se_blank'))
+            'exceptions': ParameterDefinition(False, str, 'application/vnd.ogc.se_xml', ('application/vnd.ogc.se_xml', 'application/vnd.ogc.se_inimage', 'application/vnd.ogc.se_blank','text/html'))
         },
         'GetFeatureInfo': {
             'layers': ParameterDefinition(True, ListFactory(str)),
@@ -54,7 +62,7 @@ class ServiceHandler(WMSBaseServiceHandler):
             'format': ParameterDefinition(False, str, allowedvalues=('image/png', 'image/jpeg')),
             'transparent': ParameterDefinition(False, str, 'FALSE', ('TRUE', 'FALSE')),
             'bgcolor': ParameterDefinition(False, ColorFactory, ColorFactory('0xFFFFFF')),
-            'exceptions': ParameterDefinition(False, str, 'application/vnd.ogc.se_xml', ('application/vnd.ogc.se_xml', 'application/vnd.ogc.se_inimage', 'application/vnd.ogc.se_blank')),
+            'exceptions': ParameterDefinition(False, str, 'application/vnd.ogc.se_xml', ('application/vnd.ogc.se_xml', 'application/vnd.ogc.se_inimage', 'application/vnd.ogc.se_blank','text/html')),
             'query_layers': ParameterDefinition(True, ListFactory(str)),
             'info_format': ParameterDefinition(True, str, allowedvalues=('text/plain', 'text/xml')),
             'feature_count': ParameterDefinition(False, int, 1),
@@ -152,7 +160,7 @@ class ServiceHandler(WMSBaseServiceHandler):
                 rootlayercrs.text = epsgcode.upper()
                 rootlayerelem.append(rootlayercrs)
     
-            for layer in self.mapfactory.layers.values():
+            for layer in self.mapfactory.ordered_layers:
                 layerproj = Projection(layer.srs)
                 layername = ElementTree.Element('Name')
                 layername.text = layer.name
@@ -224,6 +232,7 @@ class ExceptionHandler(BaseExceptionHandler):
 
     handlers = {'application/vnd.ogc.se_xml': BaseExceptionHandler.xmlhandler,
                 'application/vnd.ogc.se_inimage': BaseExceptionHandler.inimagehandler,
-                'application/vnd.ogc.se_blank': BaseExceptionHandler.blankhandler}
+                'application/vnd.ogc.se_blank': BaseExceptionHandler.blankhandler,
+                'text/html': BaseExceptionHandler.htmlhandler}
 
     defaulthandler = 'application/vnd.ogc.se_xml'

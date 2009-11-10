@@ -41,8 +41,10 @@ class gdal_datasource : public mapnik::datasource
       mapnik::layer_descriptor get_descriptor() const;
    private:
       mapnik::Envelope<double> extent_;
-      boost::shared_ptr<GDALDataset> dataset_;
+      std::string dataset_name_;
+      GDALDataset* dataset_;
       mapnik::layer_descriptor desc_;
+      bool shared_dataset_;
 };
 
 

@@ -22,6 +22,7 @@
 
 //$Id$
 
+#include <cstdlib>
 #include <mapnik/unicode.hpp>
 
 #ifdef USE_FRIBIDI
@@ -76,7 +77,7 @@ namespace mapnik {
     }
 #endif
 
-
+/*
     inline std::wstring to_unicode(std::string const& text)
     {
         std::wstring out;
@@ -159,31 +160,41 @@ namespace mapnik {
       return out;
    }
    
-
+*/
    transcoder::transcoder (std::string const& encoding)
+      : ok_(false),
+        conv_(0)
    {
-#ifdef MAPNIK_DEBUG
-      std::cerr << "ENCODING = " << encoding << "\n"; 
-#endif
-
-#ifdef _WIN32
-      desc_ = iconv_open("UTF-16LE",encoding.c_str());
-#else
-#ifndef WORDS_BIGENDIAN
-      desc_ = iconv_open("UCS-4LE",encoding.c_str());
-#else
-      desc_ = iconv_open("UCS-4BE",encoding.c_str());
-#endif
-#endif
+      
+//#ifndef WORDS_BIGENDIAN
+         //     desc_ = iconv_open("UCS-4LE",encoding.c_str());
+//#else
+         //     desc_ = iconv_open("UCS-4BE",encoding.c_str());
+//#endif
+      
+      UErrorCode err = U_ZERO_ERROR;
+      conv_ = ucnv_open(encoding.c_str(),&err);
+      if (U_SUCCESS(err)) ok_ = true;
+      // TODO
    }
    
-   std::wstring transcoder::transcode(std::string const& input) const
+   UnicodeString transcoder::transcode(const char* data) const
    {
+
+      UErrorCode err = U_ZERO_ERROR;
+      
+      UnicodeString ustr(data,-1,conv_,err); 
+      if (ustr.isBogus())
+      {
+         ustr.remove();
+      }
+      return ustr;
+/*
       if (desc_ == iconv_t(-1)) return to_unicode(input); 
       size_t inleft = input.size();
       std::wstring output(inleft,0);
       size_t outleft = inleft * sizeof(wchar_t);
-#if (!defined(OSX_LEOPARD) && defined(DARWIN)) || defined(SUNOS) || defined(FREEBSD) || defined(_WIN32)
+#if (!defined(OSX_LEOPARD) && defined(DARWIN)) || defined(SUNOS) || defined(FREEBSD)
       const char * in = input.c_str();
 #else
       char * in = const_cast<char*>(input.data());
@@ -200,10 +211,13 @@ namespace mapnik {
       }
 #endif
       return output;
+*/
    }
    
    transcoder::~transcoder()
    {
-      if (desc_ != iconv_t(-1)) iconv_close(desc_);
+      // if (desc_ != iconv_t(-1)) iconv_close(desc_);
+      if (conv_)
+         ucnv_close(conv_);
    }   
 }

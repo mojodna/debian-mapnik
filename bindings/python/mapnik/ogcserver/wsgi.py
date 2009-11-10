@@ -17,7 +17,9 @@
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
-# $Id: wsgi.py 458 2007-03-05 03:20:35Z jfdoyon $
+# $Id: wsgi.py 1052 2009-03-31 17:18:41Z dane $
+
+"""WSGI application wrapper for Mapnik OGC WMS Server."""
 
 from exceptions import OGCException, ServerConfigurationError
 from configparser import SafeConfigParser
@@ -46,12 +48,16 @@ class WSGIApp:
             self.debug = int(conf.get('server', 'debug'))
         else:
             self.debug = 0
+        if self.conf.has_option_with_value('server', 'maxage'):
+            self.max_age = 'max-age=%d' % self.conf.get('server', 'maxage')
+        else:
+            self.max_age = None
 
     def __call__(self, environ, start_response):
         reqparams = {}
         for key, value in parse_qs(environ['QUERY_STRING'], True).items():
             reqparams[key.lower()] = value[0]
-        onlineresource = 'http://%s:%s%s?' % (environ['SERVER_NAME'], environ['SERVER_PORT'], environ['SCRIPT_NAME'])
+        onlineresource = 'http://%s:%s%s?' % (environ['SERVER_NAME'], environ['SERVER_PORT'], environ['PATH_INFO'])
         try:
             if not reqparams.has_key('request'):
                 raise OGCException('Missing request parameter.')
@@ -92,6 +98,9 @@ class WSGIApp:
             else:
                 eh = ExceptionHandler111(self.debug)
             response = eh.getresponse(reqparams)
-        start_response('200 OK', [('Content-Type', response.content_type)])
+        response_headers = [('Content-Type', response.content_type),('Content-Length', str(len(response.content)))]
+        if self.max_age:
+            response_headers.append(('Cache-Control', max_age))
+        start_response('200 OK', response_headers)
         yield response.content
             

@@ -29,6 +29,7 @@
 #include <mapnik/markers_converter.hpp>
 #include <mapnik/arrow.hpp>
 #include <mapnik/config_error.hpp>
+#include <mapnik/font_set.hpp>
 
 // agg
 #define AGG_RENDERING_BUFFER row_ptr_cache<int8u>
@@ -104,7 +105,7 @@ namespace mapnik
    struct rasterizer :  agg::rasterizer_scanline_aa<>, boost::noncopyable {};
    
    template <typename T>
-   agg_renderer<T>::agg_renderer(Map const& m, Image32 & pixmap, unsigned offset_x, unsigned offset_y)
+   agg_renderer<T>::agg_renderer(Map const& m, T & pixmap, unsigned offset_x, unsigned offset_y)
       : feature_style_processor<agg_renderer>(m),
         pixmap_(pixmap),
         width_(pixmap_.width()),
@@ -112,10 +113,10 @@ namespace mapnik
         t_(m.getWidth(),m.getHeight(),m.getCurrentExtent(),offset_x,offset_y),
         font_engine_(),
         font_manager_(font_engine_),
-        detector_(Envelope<double>(-64 ,-64, m.getWidth() + 64 ,m.getHeight() + 64)),
+        detector_(Envelope<double>(-m.buffer_size(), -m.buffer_size(), m.getWidth() + m.buffer_size() ,m.getHeight() + m.buffer_size())),
         ras_ptr(new rasterizer)
    {
-      boost::optional<Color> bg = m.background();
+      boost::optional<color> bg = m.background();
       if (bg) pixmap_.setBackground(*bg);
 #ifdef MAPNIK_DEBUG
       std::clog << "scale=" << m.scale() << "\n";
@@ -173,7 +174,7 @@ namespace mapnik
       typedef agg::renderer_base<agg::pixfmt_rgba32_plain> ren_base;    
       typedef agg::renderer_scanline_aa_solid<ren_base> renderer;
 	    
-      Color const& fill_ = sym.get_fill();
+      color const& fill_ = sym.get_fill();
       agg::scanline_u8 sl;
       
       agg::rendering_buffer buf(pixmap_.raw_data(),width_,height_, width_ * 4);
@@ -183,6 +184,7 @@ namespace mapnik
       unsigned r=fill_.red();
       unsigned g=fill_.green();
       unsigned b=fill_.blue();
+      unsigned a=fill_.alpha();
       renderer ren(renb);
       
       ras_ptr->reset();
@@ -196,7 +198,7 @@ namespace mapnik
             ras_ptr->add_path(path);
          }
       }
-      ren.color(agg::rgba8(r, g, b, int(255 * sym.get_opacity())));
+      ren.color(agg::rgba8(r, g, b, int(a * sym.get_opacity())));
       agg::render_scanlines(*ras_ptr, sl, ren);
    }
    
@@ -222,10 +224,11 @@ namespace mapnik
       agg::pixfmt_rgba32_plain pixf(buf);
       ren_base renb(pixf);
       
-      Color const& fill_  = sym.get_fill();
+      color const& fill_  = sym.get_fill();
       unsigned r=fill_.red();
       unsigned g=fill_.green();
       unsigned b=fill_.blue();
+      unsigned a=fill_.alpha();
       renderer ren(renb);         
       agg::scanline_u8 sl;
      
@@ -274,13 +277,12 @@ namespace mapnik
                
                path_type faces_path (t_,*faces,prj_trans);
                ras_ptr->add_path(faces_path);
-               ren.color(agg::rgba8(int(r*0.8), int(g*0.8), int(b*0.8), int(255 * sym.get_opacity())));
+               ren.color(agg::rgba8(int(r*0.8), int(g*0.8), int(b*0.8), int(a * sym.get_opacity())));
                agg::render_scanlines(*ras_ptr, sl, ren);
                ras_ptr->reset();
                
                frame->move_to(itr->get<0>(),itr->get<1>());
                frame->line_to(itr->get<0>(),itr->get<1>()+height);   
-               
             }
             
             geom.rewind(0);
@@ -308,9 +310,8 @@ namespace mapnik
             
             path_type roof_path (t_,*roof,prj_trans);
             ras_ptr->add_path(roof_path);
-            ren.color(agg::rgba8(r, g, b, int(255 * sym.get_opacity())));
+            ren.color(agg::rgba8(r, g, b, int(a * sym.get_opacity())));
             agg::render_scanlines(*ras_ptr, sl, ren);
-            
          }
       }
    }
@@ -331,10 +332,11 @@ namespace mapnik
 
       ren_base renb(pixf);	          
       mapnik::stroke const&  stroke_ = sym.get_stroke();
-      Color const& col = stroke_.get_color();
+      color const& col = stroke_.get_color();
       unsigned r=col.red();
       unsigned g=col.green();
       unsigned b=col.blue();
+      unsigned a=col.alpha();
       renderer ren(renb);
       ras_ptr->reset();
       agg::scanline_p8 sl;
@@ -410,7 +412,7 @@ namespace mapnik
             }
          }
       }
-      ren.color(agg::rgba8(r, g, b, int(255*stroke_.get_opacity())));
+      ren.color(agg::rgba8(r, g, b, int(a*stroke_.get_opacity())));
       agg::render_scanlines(*ras_ptr, sl, ren);
    }
    
@@ -443,7 +445,7 @@ namespace mapnik
             if (sym.get_allow_overlap() || 
                 detector_.has_placement(label_ext))
             {    
-               pixmap_.set_rectangle_alpha(px,py,*data);
+               pixmap_.set_rectangle_alpha2(*data,px,py,sym.get_opacity());
                detector_.insert(label_ext);
             }
          }
@@ -456,48 +458,105 @@ namespace mapnik
                                   proj_transform const& prj_trans)
    {
       typedef  coord_transform2<CoordTransform,geometry2d> path_type;
-      std::wstring text = feature[sym.get_name()].to_unicode();
+      UnicodeString text = feature[sym.get_name()].to_unicode();
       boost::shared_ptr<ImageData32> const& data = sym.get_image();
       if (text.length() > 0 && data)
       {
-         face_ptr face = font_manager_.get_face(sym.get_face_name());
-         if (face)
+         face_set_ptr faces;
+
+         if (sym.get_fontset().size() > 0)
          {
-            text_renderer<mapnik::Image32> ren(pixmap_,face);
+            faces = font_manager_.get_face_set(sym.get_fontset());
+         }
+         else 
+         {
+            faces = font_manager_.get_face_set(sym.get_face_name());
+         }
+
+         if (faces->size() > 0)
+         {
+            text_renderer<T> ren(pixmap_, faces);
+            
             ren.set_pixel_size(sym.get_text_size());
             ren.set_fill(sym.get_fill());
-            string_info info(text);
-            ren.get_string_info(&info);
-            
+            ren.set_halo_fill(sym.get_halo_fill());
+            ren.set_halo_radius(sym.get_halo_radius());
+
             placement_finder<label_collision_detector4> finder(detector_);
+            
+            string_info info(text);
+            
+            faces->get_string_info(info);
+           
+
+            int w = data->width();
+            int h = data->height();
             
             unsigned num_geom = feature.num_geometries();
             for (unsigned i=0;i<num_geom;++i)
             {
-               geometry2d const& geom = feature.get_geometry(i);
-               if (geom.num_points() > 0) // don't bother with empty geometries 
+               geometry2d const& geom = feature.get_geometry(i); 
+               if (geom.num_points() > 0 ) 
                {    
                   path_type path(t_,geom,prj_trans);
-                  placement text_placement(info, sym);
-                  text_placement.avoid_edges = sym.get_avoid_edges();
-                  finder.find_point_placements<path_type>(text_placement,path);
                   
-                  for (unsigned int ii = 0; ii < text_placement.placements.size(); ++ ii)
-                  { 
-                     int w = data->width();
-                     int h = data->height();
-                     
-                     double x = text_placement.placements[ii].starting_x;
-                     double y = text_placement.placements[ii].starting_y;
-                     
-                     int px=int(x - (w/2));
-                     int py=int(y - (h/2));
-                     
-                     pixmap_.set_rectangle_alpha(px,py,*data);
-                     
-                     Envelope<double> dim = ren.prepare_glyphs(&text_placement.placements[ii]);
+                  if (sym.get_label_placement() == POINT_PLACEMENT) 
+                  {
+                     double label_x;
+                     double label_y;
+                     double z=0.0;
+                     placement text_placement(info, sym, false);
+                     text_placement.avoid_edges = sym.get_avoid_edges();
+                     geom.label_position(&label_x, &label_y);
+                     prj_trans.backward(label_x,label_y, z);
+                     t_.forward(&label_x,&label_y);
+                     finder.find_point_placement(text_placement,label_x,label_y);
+
+                     for (unsigned int ii = 0; ii < text_placement.placements.size(); ++ ii)
+                     { 
+                        double x = text_placement.placements[ii].starting_x;
+                        double y = text_placement.placements[ii].starting_y;
+                        // remove displacement from image label
+                        position pos = sym.get_displacement();
+                        double lx = x - boost::get<0>(pos);
+                        double ly = y - boost::get<1>(pos);
+                        int px=int(lx - (0.5 * w)) ;
+                        int py=int(ly - (0.5 * h)) ;
+                        Envelope<double> label_ext (floor(lx - 0.5 * w), floor(ly - 0.5 * h), ceil (lx + 0.5 * w), ceil (ly + 0.5 * h));
                         
-                     ren.render(x,y);
+                        if ( detector_.has_placement(label_ext))
+                        {    
+                           pixmap_.set_rectangle_alpha(px,py,*data);
+                           Envelope<double> dim = ren.prepare_glyphs(&text_placement.placements[ii]);
+                           ren.render(x,y);
+                           detector_.insert(label_ext);
+                        }
+                     }
+                     finder.update_detector(text_placement);
+                  }
+                  
+                  else if (geom.num_points() > 1 && sym.get_label_placement() == LINE_PLACEMENT) 
+                  {
+                     placement text_placement(info, sym, true);
+                     text_placement.avoid_edges = sym.get_avoid_edges();
+                     finder.find_point_placements<path_type>(text_placement,path);
+                     
+                     for (unsigned int ii = 0; ii < text_placement.placements.size(); ++ ii)
+                     {
+                        int w = data->width();
+                        int h = data->height();	                     
+                        double x = text_placement.placements[ii].starting_x;
+                        double y = text_placement.placements[ii].starting_y;
+                        
+                        int px=int(x - (w/2));
+                        int py=int(y - (h/2));
+                        
+                        pixmap_.set_rectangle_alpha(px,py,*data);
+                        
+                        Envelope<double> dim = ren.prepare_glyphs(&text_placement.placements[ii]);
+                        ren.render(x,y);
+                     }
+                     finder.update_detector(text_placement);
                   }
                }
             }
@@ -601,20 +660,58 @@ namespace mapnik
    }
 
    template <typename T>
-   void agg_renderer<T>::process(raster_symbolizer const&,
+   void agg_renderer<T>::process(raster_symbolizer const& sym,
                                  Feature const& feature,
                                  proj_transform const& prj_trans)
    {
-      // TODO -- at the moment raster_symbolizer is an empty class 
-      // used for type dispatching, but we can have some fancy raster
-      // processing in a future (filters??). Just copy raster into pixmap for now.
       raster_ptr const& raster=feature.get_raster();
       if (raster)
       {
          Envelope<double> ext=t_.forward(raster->ext_);
-         ImageData32 target(int(ext.width() + 0.5),int(ext.height() + 0.5));
-         scale_image<ImageData32>(target,raster->data_);
-         pixmap_.set_rectangle(int(ext.minx()),int(ext.miny()),target);
+         ImageData32 target(int(ceil(ext.width())),int(ceil(ext.height())));
+         int start_x = int(ext.minx()+0.5);
+         int start_y = int(ext.miny()+0.5);
+         
+         if (sym.get_scaling() == "fast") {
+            scale_image<ImageData32>(target,raster->data_);
+         } else if (sym.get_scaling() == "bilinear"){
+            scale_image_bilinear<ImageData32>(target,raster->data_);
+         } else if (sym.get_scaling() == "bilinear8"){
+            scale_image_bilinear8<ImageData32>(target,raster->data_);
+         } else {
+            scale_image<ImageData32>(target,raster->data_);
+         }
+
+         if (sym.get_mode() == "normal"){
+             if (sym.get_opacity() == 1.0) {
+                pixmap_.set_rectangle(start_x,start_y,target);
+             } else {
+                pixmap_.set_rectangle_alpha2(target,start_x,start_y, sym.get_opacity());
+             }
+         } else if (sym.get_mode() == "grain_merge"){
+            pixmap_.template merge_rectangle<MergeGrain> (target,start_x,start_y, sym.get_opacity());
+         } else if (sym.get_mode() == "grain_merge2"){
+            pixmap_.template merge_rectangle<MergeGrain2> (target,start_x,start_y, sym.get_opacity());
+         } else if (sym.get_mode() == "multiply"){
+            pixmap_.template merge_rectangle<Multiply> (target,start_x,start_y, sym.get_opacity());
+         } else if (sym.get_mode() == "multiply2"){
+            pixmap_.template merge_rectangle<Multiply2> (target,start_x,start_y, sym.get_opacity());
+         } else if (sym.get_mode() == "divide"){
+            pixmap_.template merge_rectangle<Divide> (target,start_x,start_y, sym.get_opacity());
+         } else if (sym.get_mode() == "divide2"){
+            pixmap_.template merge_rectangle<Divide2> (target,start_x,start_y, sym.get_opacity());
+         } else if (sym.get_mode() == "screen"){
+            pixmap_.template merge_rectangle<Screen> (target,start_x,start_y, sym.get_opacity());
+         } else if (sym.get_mode() == "hard_light"){
+            pixmap_.template merge_rectangle<HardLight> (target,start_x,start_y, sym.get_opacity());
+         } else {
+             if (sym.get_opacity() == 1.0){
+                 pixmap_.set_rectangle(start_x,start_y,target);
+             } else {
+                pixmap_.set_rectangle_alpha2(target,start_x,start_y, sym.get_opacity());
+             }
+         }
+         // TODO: other modes? (add,diff,sub,...)
       }
    }
     
@@ -637,6 +734,7 @@ namespace mapnik
       unsigned r = 0;// fill_.red();
       unsigned g = 0; //fill_.green();
       unsigned b = 255; //fill_.blue();
+      unsigned a = 255; //fill_.alpha();
       renderer ren(renb); 
       for (unsigned i=0;i<feature.num_geometries();++i)
       {
@@ -654,7 +752,7 @@ namespace mapnik
             ras_ptr->add_path(marker);
          }
       }
-      ren.color(agg::rgba8(r, g, b, 255));
+      ren.color(agg::rgba8(r, g, b, a));
       agg::render_scanlines(*ras_ptr, sl, ren);
    }
    
@@ -665,14 +763,25 @@ namespace mapnik
    {
       typedef  coord_transform2<CoordTransform,geometry2d> path_type;
       
-      std::wstring text = feature[sym.get_name()].to_unicode();
+      UnicodeString text = feature[sym.get_name()].to_unicode();
       if ( text.length() > 0 )
       {
-         Color const& fill  = sym.get_fill();
-         face_ptr face = font_manager_.get_face(sym.get_face_name());
-         if (face)
+         color const& fill = sym.get_fill();
+
+         face_set_ptr faces;
+
+         if (sym.get_fontset().size() > 0)
          {
-            text_renderer<mapnik::Image32> ren(pixmap_,face);
+            faces = font_manager_.get_face_set(sym.get_fontset());
+         }
+         else 
+         {
+            faces = font_manager_.get_face_set(sym.get_face_name());
+         }
+
+         if (faces->size() > 0)
+         {
+            text_renderer<T> ren(pixmap_, faces);
             ren.set_pixel_size(sym.get_text_size());
             ren.set_fill(fill);
             ren.set_halo_fill(sym.get_halo_fill());
@@ -681,7 +790,8 @@ namespace mapnik
             placement_finder<label_collision_detector4> finder(detector_);
            
             string_info info(text);
-            ren.get_string_info(&info);
+            
+            faces->get_string_info(info);
             unsigned num_geom = feature.num_geometries();
             for (unsigned i=0;i<num_geom;++i)
             {
@@ -690,15 +800,17 @@ namespace mapnik
                {
                   path_type path(t_,geom,prj_trans);
                   placement text_placement(info,sym);  
+                  text_placement.avoid_edges = sym.get_avoid_edges();
                   if (sym.get_label_placement() == POINT_PLACEMENT) 
                   {
                      double label_x, label_y, z=0.0;
                      geom.label_position(&label_x, &label_y);
                      prj_trans.backward(label_x,label_y, z);
                      t_.forward(&label_x,&label_y);
-                     finder.find_point_placement(text_placement,label_x,label_y);
+                     finder.find_point_placement(text_placement,label_x,label_y,sym.get_vertical_alignment());
+                     finder.update_detector(text_placement);
                   }
-                  else //LINE_PLACEMENT
+                  else if ( geom.num_points() > 1 && sym.get_label_placement() == LINE_PLACEMENT)
                   {
                      finder.find_line_placements<path_type>(text_placement,path);
                   }

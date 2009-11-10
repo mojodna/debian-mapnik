@@ -35,7 +35,9 @@ namespace mapnik
 {
     point_symbolizer::point_symbolizer()
         : symbolizer_with_image(boost::shared_ptr<ImageData32>(new ImageData32(4,4))),
+          opacity_(1.0),
           overlap_(false)
+          
     {
         //default point symbol is black 4x4px square
         image_->set(0xff000000);
@@ -45,11 +47,14 @@ namespace mapnik
                                        std::string const& type,
                                        unsigned width,unsigned height) 
         : symbolizer_with_image(file, type, width, height),
+          opacity_(1.0),      
           overlap_(false)
+          
     { }
     
     point_symbolizer::point_symbolizer(point_symbolizer const& rhs)
         : symbolizer_with_image(rhs),
+          opacity_(rhs.opacity_),
           overlap_(rhs.overlap_)
     {}
     
