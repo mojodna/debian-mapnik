@@ -26,7 +26,7 @@ override_dh_auto_build:
 	# We don't provide pkg-config files so this Makefile is just confusing
 	# when installed as a demo
 	#rm -f demo/c++/Makefile
-	dh_auto_build
+	dh_auto_build --with quilt
 
 override_dh_auto_clean:
 	python scons/scons.py --clean
@@ -39,7 +39,7 @@ override_dh_auto_clean:
 	# Lintian fix
 	chmod -x demo/viewer/images/*.png bindings/python/mapnik/ogcserver/modserver.py
 
-	dh_auto_clean
+	dh_auto_clean --with quilt
 
 override_dh_auto_install:
 	python scons/scons.py install
@@ -53,4 +53,4 @@ override_dh_installexamples:
 %:
 #	dh_installexamples -Xdata/new
 #	dh_install --sourcedir=debian/tmp
-	dh $@
+	dh --with quilt $@
