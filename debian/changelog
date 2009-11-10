@@ -17,8 +17,9 @@ mapnik (0.6.1-2) UNRELEASED; urgency=low
   * debian/patches/01-fix_deprecated_includes.patch added
   * debian/copyright, substitute (C) with © to make lintian happy
   * debian/mapnik-doc.doc-base added
+  * debian/libmapnik-dev.dirs added
 
- -- David Paleino <dapal@debian.org>  Tue, 10 Nov 2009 11:35:01 +0100
+ -- David Paleino <dapal@debian.org>  Tue, 10 Nov 2009 13:30:23 +0100
 
 mapnik (0.6.1-1) unstable; urgency=low
 
