@@ -35,12 +35,12 @@ libraries = ['pq']
 
 if env['PLATFORM'] == 'Darwin':
     libraries.append('mapnik')
-    libraries.append('iconv')
-    if env['BIDI'] : libraries.append('fribidi')
+    libraries.append('icuuc')
+    libraries.append('icudata')
     if env['THREADING'] == 'multi':
-        libraries.append('boost_thread%s-mt' % env['BOOST_APPEND'])
+        libraries.append('boost_thread%s' % env['BOOST_APPEND'])
 
 postgis_inputdriver = env.SharedLibrary('postgis', source=postgis_src, SHLIBPREFIX='', SHLIBSUFFIX='.input', LIBS=libraries)
 
-env.Install(install_prefix + '/' + env['LIBDIR_SCHEMA'] + '/mapnik/0.5/input', postgis_inputdriver)
-env.Alias('install', install_prefix + '/' + env['LIBDIR_SCHEMA'] + '/mapnik/0.5/input')
+env.Install(install_prefix + '/' + env['LIBDIR_SCHEMA'] + env['LIB_DIR_NAME'] + '/input', postgis_inputdriver)
+env.Alias('install', install_prefix + '/' + env['LIBDIR_SCHEMA'] + env['LIB_DIR_NAME'] + '/input')

@@ -17,7 +17,9 @@
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
-# $Id: exceptions.py 234 2006-04-16 04:17:39Z jdoyon $
+# $Id: exceptions.py 1033 2009-03-30 04:25:01Z dane $
+
+"""Custom OGCServer Exceptions"""
 
 class OGCException(Exception):
     pass

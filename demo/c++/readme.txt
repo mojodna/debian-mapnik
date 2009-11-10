@@ -1,6 +1,6 @@
-This directory contains a simple c++ program demonstrating Mapnik API. It mimics python example with couple exceptions.
+This directory contains a simple c++ program demonstrating the Mapnik C++ API. It mimics the python 'rundemo.py' example with a couple exceptions.
 
-To build (using GCC/G++ toolkit):
+To build it:
 
 g++ -O3 -I/usr/include/freetype2 -I/usr/include/agg2 -lmapnik rundemo.cpp -o rundemo
 
@@ -8,7 +8,8 @@ g++ -O3 -I/usr/include/freetype2 -I/usr/include/agg2 -lmapnik rundemo.cpp -o run
 
 To run:
 
-./rundemo
+    $ cd demo/c++
+    $ ./rundemo `mapnik-plugin-base`
 
 For more detailed comments have a look in demo/python/rundemo.py
 

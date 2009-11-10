@@ -45,13 +45,16 @@ namespace mapnik {
     class literal : public expression<FeatureT>
     {
     public:
+        literal(bool val)
+            : expression<FeatureT>(),
+              value_(val) {}
         literal(int val)
             : expression<FeatureT>(),
               value_(val) {}
         literal(double val)
             : expression<FeatureT>(),
               value_(val) {}
-        literal(std::wstring const& val)
+        literal(UnicodeString const& val)
             : expression<FeatureT>(),
               value_(val) {}
         literal(literal const& other)

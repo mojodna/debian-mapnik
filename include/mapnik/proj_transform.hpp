@@ -40,12 +40,15 @@ namespace mapnik {
         
         bool forward (double& x, double& y , double& z) const;
         bool backward (double& x, double& y , double& z) const;
+        mapnik::projection const& source() const;
+        mapnik::projection const& dest() const;
         
     private:
         projection const& source_;
         projection const& dest_;
         bool is_source_latlong_;
         bool is_dest_latlong_;
+        bool is_source_equal_dest;
     };
 }
 

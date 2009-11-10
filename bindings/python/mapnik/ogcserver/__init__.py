@@ -17,4 +17,6 @@
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
-# $Id: __init__.py 226 2006-04-08 06:21:26Z jdoyon $
+# $Id: __init__.py 1033 2009-03-30 04:25:01Z dane $
+
+"""Mapnik OGC WMS Server."""

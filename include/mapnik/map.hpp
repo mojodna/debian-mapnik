@@ -28,28 +28,63 @@
   #include <config.h>
 #endif
 
+// mapnik
+#include <mapnik/enumeration.hpp>
 #include <mapnik/feature_type_style.hpp>
 #include <mapnik/datasource.hpp>
 #include <mapnik/layer.hpp>
+
+// boost
 #include <boost/optional/optional.hpp>
 
 namespace mapnik
 {
     class MAPNIK_DECL Map
     {	
+    public:
+
+        enum aspect_fix_mode 
+        {
+           // grow the width or height of the specified geo bbox to fill the map size. default behaviour.
+           GROW_BBOX,
+           // grow the width or height of the map to accomodate the specified geo bbox.
+           GROW_CANVAS,
+           // shrink the width or height of the specified geo bbox to fill the map size. 
+           SHRINK_BBOX,
+           // shrink the width or height of the map to accomodate the specified geo bbox.
+           SHRINK_CANVAS,
+           // adjust the width of the specified geo bbox, leave height and map size unchanged
+           ADJUST_BBOX_WIDTH,
+           // adjust the height of the specified geo bbox, leave width and map size unchanged
+           ADJUST_BBOX_HEIGHT,
+           // adjust the width of the map, leave height and geo bbox unchanged
+           ADJUST_CANVAS_WIDTH,
+           //adjust the height of the map, leave width and geo bbox unchanged 
+           ADJUST_CANVAS_HEIGHT,
+           // 
+           aspect_fix_mode_MAX
+        };
+        
+    private:
         static const unsigned MIN_MAPSIZE=16;
         static const unsigned MAX_MAPSIZE=MIN_MAPSIZE<<10;
         unsigned width_;
         unsigned height_;
         std::string  srs_;
-        boost::optional<Color> background_;
+        int buffer_size_;
+        boost::optional<color> background_;
         std::map<std::string,feature_type_style> styles_;
+        std::map<std::string,FontSet> fontsets_;
         std::vector<Layer> layers_;
+        aspect_fix_mode aspectFixMode_;
         Envelope<double> currentExtent_;
         
     public:
+
         typedef std::map<std::string,feature_type_style>::const_iterator const_style_iterator;
         typedef std::map<std::string,feature_type_style>::iterator style_iterator;
+        typedef std::map<std::string,FontSet>::const_iterator const_fontset_iterator;
+        typedef std::map<std::string,FontSet>::iterator fontset_iterator;
         
         /*! \brief Default constructor.
          *
@@ -127,7 +162,31 @@ namespace mapnik
          *  @param name The name of the style.
          *  @return The style if found. If not found return the default map style.
          */
-        feature_type_style const& find_style(std::string const& name) const;
+        boost::optional<feature_type_style const&> find_style(std::string const& name) const;
+        
+        /*! \brief Insert a fontset into the map.
+         *  @param name The name of the fontset.
+         *  @param style The fontset to insert.
+         *  @return true If success.
+         *  @return false If failure.
+         */
+        bool insert_fontset(std::string const& name, FontSet const& fontset);
+       
+        /*! \brief Find a fontset.
+         *  @param name The name of the fontset.
+         *  @return The fontset if found. If not found return the default map fontset.
+         */
+        FontSet const& find_fontset(std::string const& name) const;
+
+        /*! \brief Get all fontsets
+         * @return Const reference to fontsets
+         */
+        std::map<std::string,FontSet> const& fontsets() const;
+
+        /*! \brief Get all fontsets
+         * @return Non-constant reference to fontsets
+         */
+        std::map<std::string,FontSet> & fontsets();
 
         /*! \brief Get number of all layers.
          */
@@ -202,14 +261,25 @@ namespace mapnik
         /*! \brief Set the map background color.
          *  @param c Background color.
          */
-        void set_background(const Color& c);
+        void set_background(const color& c);
 
         /*! \brief Get the map background color 
          *  @return Background color as boost::optional
          *  object
          */
-        boost::optional<Color> const& background() const;
+        boost::optional<color> const& background() const;
 
+        /*! \brief Set buffer size 
+         *  @param buffer_size Buffer size in pixels.
+         */
+        
+        void set_buffer_size(int buffer_size);
+        
+       /*! \brief Get the map buffer size 
+         *  @return Buffer size as int
+         */
+        int buffer_size() const;
+        
         /*! \brief Zoom the map at the current position.
          *  @param factor The factor how much the map is zoomed in or out.
          */
@@ -235,17 +305,56 @@ namespace mapnik
          */
         const Envelope<double>& getCurrentExtent() const;
 
+        /*! \brief Get current buffered bounding box.
+         *  @return The current buffered bounding box.
+         */
+        Envelope<double> get_buffered_extent() const;
+        
+        /*!
+         * @return The Map Scale.
+         */
         double scale() const;
+        
+        double scale_denominator() const;
 
         CoordTransform view_transform() const;
-
+        
+        /*!
+         * @brief Query a Map Layer (by layer index) for features
+         *
+         * Intersecting the given x,y location in the coordinates
+         * of map projection.
+         *
+         * @param index The index of the layer to query from.
+         * @param x The x coordinate where to query.
+         * @param y The y coordinate where to query.
+         * @return A Mapnik Featureset if successful otherwise will return NULL.
+         */
         featureset_ptr query_point(unsigned index, double x, double y) const;
 
+        /*!
+         * @brief Query a Map Layer (by layer index) for features
+         *
+         * Intersecting the given x,y location in the coordinates
+         * of the pixmap or map surface.
+         *
+         * @param index The index of the layer to query from.
+         * @param x The x coordinate where to query.
+         * @param y The y coordinate where to query.
+         * @return A Mapnik Featureset if successful otherwise will return NULL.
+         */
         featureset_ptr query_map_point(unsigned index, double x, double y) const;
+        
         ~Map();
+
+        inline void setAspectFixMode(aspect_fix_mode afm) { aspectFixMode_ = afm; }
+        inline aspect_fix_mode getAspectFixMode() const { return aspectFixMode_; }
+
     private:
         void fixAspectRatio();
     };
+   
+   DEFINE_ENUM(aspect_fix_mode_e,Map::aspect_fix_mode);
 }
 
 #endif //MAP_HPP

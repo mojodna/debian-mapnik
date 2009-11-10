@@ -36,14 +36,20 @@ using mapnik::filter_factory;
 using mapnik::Feature;
 using mapnik::create_filter;
 
+filter_ptr create_filter_(std::string const& wkt)
+{
+   return create_filter(wkt,"utf8");
+}
+
 void export_filter()
 {
     using namespace boost::python;
     class_<filter<Feature>,boost::noncopyable>("Filter",
                                                "An expression which allows "
                                                "to select features.",no_init)
-        .def("__str__",&filter<Feature>::to_string);
-	;
+       .def("passes", &filter<Feature>::pass) // note: "pass" is a reserved word in Python
+       .def("__str__",&filter<Feature>::to_string);
+    ;
     
-    def("Filter",&create_filter);
+    def("Filter",&create_filter_);
 }

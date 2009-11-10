@@ -25,34 +25,61 @@ import os
 
 Import('env')
 
-ABI_VERSION=[0,5,0]
+ABI_VERSION = env['ABI_VERSION']
 
 prefix = env['PREFIX']
+
+lib_dir = os.path.normpath(prefix + '/' + env['LIBDIR_SCHEMA'])
+
 install_prefix = env['DESTDIR'] + '/' + prefix
 
-libraries = ['agg_pic'] + env['LIBS']
-# Debian hack to clean up linking of main library (fixes dpkg-shlibdeps
-# warnings)
-libraries.remove('z')
-libraries.remove('z')
-libraries.remove('boost_program_options%s-mt' % env['BOOST_APPEND'])
-libraries.remove('boost_iostreams%s-mt' % env['BOOST_APPEND'])
+filesystem = 'boost_filesystem%s' % env['BOOST_APPEND']
+regex = 'boost_regex%s' % env['BOOST_APPEND']
+
+libraries = ['freetype','ltdl','png','tiff','z','jpeg','proj','icuuc',filesystem,regex]
+
+if '-DHAVE_CAIRO' in env['CXXFLAGS']:
+    # add cairo and cairomm-1.0 to libs
+    libraries.append([lib for lib in env['LIBS'] if lib.startswith('cairo')])
+
+if env['XMLPARSER'] == 'libxml2':
+    libraries.append('xml2')
+
+if env['THREADING'] == 'multi':
+    libraries.append('boost_thread%s' % env['BOOST_APPEND'])
+        
+if env['PLATFORM'] == 'Darwin':
+    #libraries.append('icudata')
+    if env['BOOST_SYSTEM_REQUIRED']:
+        libraries.append('boost_system%s' % env['BOOST_APPEND'])
+    
+if env['INTERNAL_LIBAGG']:
+    libraries.insert(0, 'agg')
+else:
+    libraries.append([lib for lib in env['LIBS'] if lib.startswith('agg')])
+    
 
 if env['PLATFORM'] == 'Darwin':
-    libraries.append('iconv')
-    linkflags = '-Wl,-install_name,libmapnik.dylib'
+    if env['FULL_LIB_PATH']:
+        lib_path = '%s/libmapnik.dylib' % lib_dir
+    else:
+        lib_path = 'libmapnik.dylib'
+    linkflags = '-Wl,-install_name,%s' % lib_path
+    linkflags += ' -current_version 0.6.1 -compatibility_version 0.6.1'
 elif env['PLATFORM'] == 'SunOS' and env['CXX'].startswith('CC'):
     linkflags = '-R. -h libmapnik.so'
 else: # Linux and others
-    linkflags = '-Wl,-rpath-link,. -Wl,-soname,libmapnik.so.' + ("%d.%d" % (ABI_VERSION[0],ABI_VERSION[1])) 
+    linkflags = '-Wl,-rpath-link,. -Wl,-soname,libmapnik.so.' + ("%d.%d" % (ABI_VERSION[0],ABI_VERSION[1]))
 
 source = Split(
     """
     agg_renderer.cpp
     datasource_cache.cpp
+    color.cpp
     envelope.cpp
     filter_factory.cpp
     font_engine_freetype.cpp
+    font_set.cpp
     graphics.cpp
     image_reader.cpp
     image_util.cpp
@@ -83,6 +110,12 @@ source = Split(
     unicode.cpp
     """
     )
+
+if 'cairo' in env['LIBS']:
+    source += Split(
+        """
+        cairo_renderer.cpp
+        """)
 
 if env['XMLPARSER'] == 'tinyxml':
     source += Split(

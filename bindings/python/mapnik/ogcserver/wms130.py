@@ -17,14 +17,22 @@
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
-# $Id: wms130.py 458 2007-03-05 03:20:35Z jfdoyon $
+# $Id: wms130.py 1085 2009-04-09 18:40:39Z dane $
+
+"""WMS 1.3.0 compliant GetCapabilities, GetMap, GetFeatureInfo, and Exceptions interface."""
 
 from common import ParameterDefinition, Response, Version, ListFactory, \
                    ColorFactory, CRSFactory, CRS, WMSBaseServiceHandler, \
-                   BaseExceptionHandler, Projection
+                   BaseExceptionHandler, Projection, Envelope
 from exceptions import OGCException, ServerConfigurationError
-from lxml import etree as ElementTree
 from mapnik import Coord
+
+try:
+    from lxml import etree as ElementTree
+except ImportError:
+    import xml.etree.ElementTree as ElementTree
+except ImportError:
+    import elementtree.ElementTree as ElementTree
 
 class ServiceHandler(WMSBaseServiceHandler):
 
@@ -43,7 +51,7 @@ class ServiceHandler(WMSBaseServiceHandler):
             'format': ParameterDefinition(True, str, allowedvalues=('image/png', 'image/jpeg')),
             'transparent': ParameterDefinition(False, str, 'FALSE', ('TRUE', 'FALSE')),
             'bgcolor': ParameterDefinition(False, ColorFactory, ColorFactory('0xFFFFFF')),
-            'exceptions': ParameterDefinition(False, str, 'XML', ('XML', 'INIMAGE', 'BLANK')),
+            'exceptions': ParameterDefinition(False, str, 'XML', ('XML', 'INIMAGE', 'BLANK','HTML')),
         },
         'GetFeatureInfo': {
             'layers': ParameterDefinition(True, ListFactory(str)),
@@ -55,7 +63,7 @@ class ServiceHandler(WMSBaseServiceHandler):
             'format': ParameterDefinition(False, str, allowedvalues=('image/png', 'image/jpeg')),
             'transparent': ParameterDefinition(False, str, 'FALSE', ('TRUE', 'FALSE')),
             'bgcolor': ParameterDefinition(False, ColorFactory, ColorFactory('0xFFFFFF')),
-            'exceptions': ParameterDefinition(False, str, 'XML', ('XML', 'INIMAGE', 'BLANK')),
+            'exceptions': ParameterDefinition(False, str, 'XML', ('XML', 'INIMAGE', 'BLANK','HTML')),
             'query_layers': ParameterDefinition(True, ListFactory(str)),
             'info_format': ParameterDefinition(True, str, allowedvalues=('text/plain', 'text/xml')),
             'feature_count': ParameterDefinition(False, int, 1),
@@ -158,7 +166,7 @@ class ServiceHandler(WMSBaseServiceHandler):
                 rootlayercrs.text = epsgcode.upper()
                 rootlayerelem.append(rootlayercrs)
     
-            for layer in self.mapfactory.layers.values():
+            for layer in self.mapfactory.ordered_layers:
                 layerproj = Projection(layer.srs)
                 layername = ElementTree.Element('Name')
                 layername.text = layer.name
@@ -217,6 +225,21 @@ class ServiceHandler(WMSBaseServiceHandler):
         if params['width'] > int(self.conf.get('service', 'maxwidth')) or params['height'] > int(self.conf.get('service', 'maxheight')):
             raise OGCException('Requested map size exceeds limits set by this server.')
         return WMSBaseServiceHandler.GetMap(self, params)
+    
+    def _buildMap(self, params):
+        """ Override _buildMap method to handle reverse axis ordering in WMS 1.3.0.
+        
+        More info: http://mapserver.org/development/rfc/ms-rfc-30.html
+        
+        'when using epsg code >=4000 and <5000 will be assumed to have a reversed axes.'
+        
+        """
+        # Call superclass method
+        m = WMSBaseServiceHandler._buildMap(self, params)
+        # for range of epsg codes reverse axis
+        if params['crs'].code >= 4000 and params['crs'].code < 5000:
+            m.zoom_to_box(Envelope(params['bbox'][1], params['bbox'][0], params['bbox'][3], params['bbox'][2]))
+        return m    
 
 class ExceptionHandler(BaseExceptionHandler):
 
@@ -235,6 +258,7 @@ class ExceptionHandler(BaseExceptionHandler):
 
     handlers = {'XML': BaseExceptionHandler.xmlhandler,
                 'INIMAGE': BaseExceptionHandler.inimagehandler,
-                'BLANK': BaseExceptionHandler.blankhandler}
+                'BLANK': BaseExceptionHandler.blankhandler,
+                'HTML': BaseExceptionHandler.htmlhandler}
 
     defaulthandler = 'XML'

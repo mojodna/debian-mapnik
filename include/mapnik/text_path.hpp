@@ -27,6 +27,7 @@
 #define __TEXT_PATH_H__
 
 #include <boost/utility.hpp>
+#include <unicode/unistr.h>
 
 namespace mapnik
 {
@@ -50,14 +51,13 @@ namespace mapnik
    {
       protected:
          typedef boost::ptr_vector<character_info> characters_t;
-         std::wstring string_;
          characters_t characters_;
-
+         UnicodeString const& text_;
          double width_;
          double height_;
       public:
-         string_info(std::wstring string)
-            : string_(string),
+         string_info(UnicodeString const& text)
+            : text_(text),
               width_(0),
               height_(0) {}
 
@@ -92,9 +92,9 @@ namespace mapnik
             return std::pair<double, double>(width_, height_);
          }
 
-         std::wstring const&  get_string() const 
+         UnicodeString const&  get_string() const 
          {
-            return string_;
+           return text_;
          }
    };
     

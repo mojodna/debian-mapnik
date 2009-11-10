@@ -25,31 +25,29 @@
 #ifndef GLOBAL_HPP
 #define GLOBAL_HPP
 
+// boost
 #include <boost/cstdint.hpp>
-
-#ifdef __SUNPRO_CC
-// Foo
-#else
-using boost::int32_t;
-using boost::uint32_t;
-using boost::int16_t;
-using boost::uint16_t;
-using boost::uint8_t;
-#endif
+#include <boost/detail/endian.hpp>
+// stl
+#include <cstring>
 
 namespace mapnik
 {
  
-#define int2net(A)  (int16_t) (((uint16_t) ((uint8_t) (A)[1]))      |   \
-                               (((uint16_t) ((uint8_t) (A)[0])) << 8))
+#ifdef BOOST_BIG_ENDIAN
+#define MAPNIK_BIG_ENDIAN
+#endif
 
-#define int4net(A)  (int32_t) (((uint32_t) ((uint8_t) (A)[3]))      |   \
-                               (((uint32_t) ((uint8_t) (A)[2])) << 8)  | \
-                               (((uint32_t) ((uint8_t) (A)[1])) << 16) | \
-                               (((uint32_t) ((uint8_t) (A)[0])) << 24))
+#define int2net(A)  (int16_t) (((boost::uint16_t) ((boost::uint8_t) (A)[1]))      | \
+                               (((boost::uint16_t) ((boost::uint8_t) (A)[0])) << 8))
+
+#define int4net(A)  (int32_t)  (((boost::uint32_t) ((boost::uint8_t) (A)[3]))        | \
+                               (((boost::uint32_t) ((boost::uint8_t) (A)[2])) << 8)  | \
+                               (((boost::uint32_t) ((boost::uint8_t) (A)[1])) << 16) | \
+                               (((boost::uint32_t) ((boost::uint8_t) (A)[0])) << 24))
 
 
-  typedef uint8_t byte;
+   typedef boost::uint8_t byte;
 #define float8net(V,M)   do { double def_temp;  \
     ((byte*) &def_temp)[0]=(M)[7];		\
     ((byte*) &def_temp)[1]=(M)[6];		\
@@ -66,6 +64,93 @@ namespace mapnik
     ((byte*) &def_temp)[2]=(M)[1];		\
     ((byte*) &def_temp)[3]=(M)[0];		\
     (V)=def_temp; } while(0)
+
+    
+    // read int16_t NDR (little endian)
+    inline boost::int16_t& read_int16_ndr(const char* data, boost::int16_t & val)
+    {
+#ifndef MAPNIK_BIG_ENDIAN
+        memcpy(&val,data,2);
+#else
+        val = (data[0]&0xff) | 
+            ((data[1]&0xff)<<8);
+#endif
+        return val;
+    }
+    
+    // read int32_t NDR (little endian)
+    inline boost::int32_t& read_int32_ndr(const char* data, boost::int32_t & val)
+    {
+#ifndef MAPNIK_BIG_ENDIAN
+        memcpy(&val,data,4);
+#else
+        val = (data[0]&0xff)     | 
+            ((data[1]&0xff)<<8)  | 
+            ((data[2]&0xff)<<16) | 
+            ((data[3]&0xff)<<24);
+#endif
+        return val;
+    }
+    
+    // read double NDR (little endian)
+    inline double& read_double_ndr(const char* data, double & val)
+    {
+#ifndef MAPNIK_BIG_ENDIAN
+        std::memcpy(&val,&data[0],8);
+#else
+        boost::int64_t bits = ((boost::int64_t)data[0] & 0xff) | 
+            ((boost::int64_t)data[1] & 0xff) << 8   |
+            ((boost::int64_t)data[2] & 0xff) << 16  |
+            ((boost::int64_t)data[3] & 0xff) << 24  |
+            ((boost::int64_t)data[4] & 0xff) << 32  |
+            ((boost::int64_t)data[5] & 0xff) << 40  |
+            ((boost::int64_t)data[6] & 0xff) << 48  |
+            ((boost::int64_t)data[7] & 0xff) << 56  ;
+        std::memcpy(&val,&bits,8);
+#endif
+        return val;
+    } 
+    
+    // read int16_t XDR (big endian)
+    inline boost::int16_t& read_int16_xdr(const char* data, boost::int16_t & val)
+    {
+#ifndef MAPNIK_BIG_ENDIAN
+        val = (data[3]&0xff) | ((data[2]&0xff)<<8);
+#else
+        memcpy(&val,data,2);
+#endif
+        return val;
+    }
+    
+    // read int32_t XDR (big endian)
+    inline boost::int32_t& read_int32_xdr(const char* data, boost::int32_t & val)
+    {
+#ifndef MAPNIK_BIG_ENDIAN
+        val = (data[3]&0xff) | ((data[2]&0xff)<<8) | ((data[1]&0xff)<<16) | ((data[0]&0xff)<<24);
+#else
+        memcpy(&val,data,4);
+#endif
+        return val;
+    }
+    
+    // read double XDR (big endian)
+    inline double& read_double_xdr(const char* data, double & val)
+    {
+#ifndef MAPNIK_BIG_ENDIAN
+        boost::int64_t bits = ((boost::int64_t)data[7] & 0xff) | 
+            ((boost::int64_t)data[6] & 0xff) << 8   |
+            ((boost::int64_t)data[5] & 0xff) << 16  |
+            ((boost::int64_t)data[4] & 0xff) << 24  |
+            ((boost::int64_t)data[3] & 0xff) << 32  |
+            ((boost::int64_t)data[2] & 0xff) << 40  |
+            ((boost::int64_t)data[1] & 0xff) << 48  |
+            ((boost::int64_t)data[0] & 0xff) << 56  ;
+        std::memcpy(&val,&bits,8);
+#else
+        std::memcpy(&val,&data[0],8);
+#endif
+        return val;
+    }
 }
 
 #endif //GLOBAL_HPP

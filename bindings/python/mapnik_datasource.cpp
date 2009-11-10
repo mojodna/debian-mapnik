@@ -25,11 +25,20 @@
 #include <boost/python/detail/api_placeholder.hpp>
 // stl
 #include <sstream>
+#include <vector>
+
 // mapnik
 #include <mapnik/envelope.hpp>
 #include <mapnik/datasource.hpp>
 #include <mapnik/datasource_cache.hpp>
 #include <mapnik/feature_layer_desc.hpp>
+#include <mapnik/memory_datasource.hpp>
+
+
+using mapnik::datasource;
+using mapnik::point_datasource;
+using mapnik::layer_descriptor;
+using mapnik::attribute_descriptor;
 
 namespace  
 {
@@ -77,18 +86,66 @@ namespace
         }
         return ss.str();
     }
-}
+    
+    std::string encoding(boost::shared_ptr<mapnik::datasource> const& ds)
+    {
+            layer_descriptor ld = ds->get_descriptor();
+            return ld.get_encoding();
+    }
+
+    std::string name(boost::shared_ptr<mapnik::datasource> const& ds)
+    {
+            layer_descriptor ld = ds->get_descriptor();
+            return ld.get_name();
+    }
+
+    boost::python::list fields(boost::shared_ptr<mapnik::datasource> const& ds)
+    {
+        boost::python::list flds;
+        if (ds)
+        {
+            layer_descriptor ld = ds->get_descriptor();
+            std::vector<attribute_descriptor> const& desc_ar = ld.get_descriptors();
+            std::vector<attribute_descriptor>::const_iterator it = desc_ar.begin();
+            std::vector<attribute_descriptor>::const_iterator end = desc_ar.end();
+            for (; it != end; ++it)
+            {
+               flds.append(it->get_name());
+            }
+        }
+        return flds;
+    }
+    boost::python::list field_types(boost::shared_ptr<mapnik::datasource> const& ds)
+    {
+        boost::python::list fld_types;
+        if (ds)
+        {
+            layer_descriptor ld = ds->get_descriptor();
+            std::vector<attribute_descriptor> const& desc_ar = ld.get_descriptors();
+            std::vector<attribute_descriptor>::const_iterator it = desc_ar.begin();
+            std::vector<attribute_descriptor>::const_iterator end = desc_ar.end();
+            for (; it != end; ++it)
+            {  
+               unsigned type = it->get_type();
+               fld_types.append(type);
+            }
+        }
+        return fld_types;
+    }}
 
 void export_datasource()
 {
     using namespace boost::python;
-    using mapnik::datasource;
-        
+    
     class_<datasource,boost::shared_ptr<datasource>,
         boost::noncopyable>("Datasource",no_init)
         .def("envelope",&datasource::envelope)
         .def("descriptor",&datasource::get_descriptor) //todo
         .def("features",&datasource::features)
+        .def("fields",&fields)
+        .def("_field_types",&field_types)
+        .def("encoding",&encoding) //todo expose as property
+        .def("name",&name)
         .def("features_at_point",&datasource::features_at_point)
         .def("params",&datasource::params,return_value_policy<copy_const_reference>(), 
              "The configuration parameters of the data source. "  
@@ -97,4 +154,8 @@ void export_datasource()
     
     def("Describe",&describe);
     def("CreateDatasource",&create_datasource);
+
+    class_<point_datasource, bases<datasource>, boost::noncopyable>("PointDatasource", init<>())
+        .def("add_point",&point_datasource::add_point)
+        ;
 }

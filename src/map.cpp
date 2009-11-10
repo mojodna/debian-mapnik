@@ -28,26 +28,48 @@
 #include <mapnik/projection.hpp>
 #include <mapnik/filter_featureset.hpp>
 #include <mapnik/hit_test_filter.hpp>
+#include <mapnik/scale_denominator.hpp>
 
 namespace mapnik
 {
+
+   static const char * aspect_fix_mode_strings[] = {
+        "GROW_BBOX",
+        "GROW_CANVAS",
+        "SHRINK_BBOX",
+        "SHRINK_CANVAS",
+        "ADJUST_BBOX_WIDTH",
+        "ADJUST_BBOX_HEIGHT",
+        "ADJUST_CANVAS_WIDTH",
+        "ADJUST_CANVAS_HEIGHT",
+        ""
+    };
+   
+   IMPLEMENT_ENUM( mapnik::aspect_fix_mode_e, aspect_fix_mode_strings );
+
     Map::Map()
         : width_(400),
           height_(400),
-          srs_("+proj=latlong +datum=WGS84") {}
+          srs_("+proj=latlong +datum=WGS84"),
+          buffer_size_(0),
+          aspectFixMode_(GROW_BBOX) {}
     
     Map::Map(int width,int height, std::string const& srs)
         : width_(width),
           height_(height),
-          srs_(srs) {}
+          srs_(srs),
+          buffer_size_(0),
+          aspectFixMode_(GROW_BBOX) {}
    
     Map::Map(const Map& rhs)
         : width_(rhs.width_),
           height_(rhs.height_),
           srs_(rhs.srs_),
+          buffer_size_(rhs.buffer_size_),
           background_(rhs.background_),
           styles_(rhs.styles_),
           layers_(rhs.layers_),
+          aspectFixMode_(rhs.aspectFixMode_),
           currentExtent_(rhs.currentExtent_) {}
     
     Map& Map::operator=(const Map& rhs)
@@ -56,9 +78,11 @@ namespace mapnik
         width_=rhs.width_;
         height_=rhs.height_;
         srs_=rhs.srs_;
+        buffer_size_ = rhs.buffer_size_;
         background_=rhs.background_;
         styles_=rhs.styles_;
         layers_=rhs.layers_;
+        aspectFixMode_=rhs.aspectFixMode_;
         return *this;
     }
    
@@ -101,14 +125,38 @@ namespace mapnik
     {
         styles_.erase(name);
     }
-    
-    feature_type_style const& Map::find_style(std::string const& name) const
+   
+    bool Map::insert_fontset(std::string const& name, FontSet const& fontset) 
     {
-        std::map<std::string,feature_type_style>::const_iterator itr = styles_.find(name);
-        if (itr!=styles_.end()) 
+        return fontsets_.insert(make_pair(name, fontset)).second;
+    }
+	 
+    FontSet const& Map::find_fontset(std::string const& name) const
+    {
+        std::map<std::string,FontSet>::const_iterator itr = fontsets_.find(name);
+        if (itr!=fontsets_.end())
             return itr->second;
-        static feature_type_style default_style;
-        return default_style;
+        static FontSet default_fontset;
+        return default_fontset;
+    }
+
+   std::map<std::string,FontSet> const& Map::fontsets() const
+   {
+      return fontsets_;
+   }
+
+   std::map<std::string,FontSet> & Map::fontsets()
+   {
+      return fontsets_;
+   }
+
+   boost::optional<feature_type_style const&> Map::find_style(std::string const& name) const
+   {
+      std::map<std::string,feature_type_style>::const_iterator itr = styles_.find(name);
+      if (itr!=styles_.end()) 
+         return boost::optional<feature_type_style const&>(itr->second);
+      else
+         return boost::optional<feature_type_style const&>() ;
     }
     
     size_t Map::layerCount() const
@@ -195,17 +243,27 @@ namespace mapnik
         return srs_;
     }
     
-    void Map::set_srs(std::string const& srs)
-    {
-        srs_ = srs;
-    }
-  
-   boost::optional<Color> const& Map::background() const
+   void Map::set_srs(std::string const& srs)
+   {
+      srs_ = srs;
+   }
+   
+   void Map::set_buffer_size( int buffer_size)
+   {
+      buffer_size_ = buffer_size;
+   }
+
+   int Map::buffer_size() const
+   {
+      return buffer_size_;
+   }
+   
+   boost::optional<color> const& Map::background() const
    {
       return background_;
    }
    
-   void Map::set_background(const Color& c)
+   void Map::set_background(const color& c)
    {
       background_ = c;
    }
@@ -281,22 +339,69 @@ namespace mapnik
     {
         double ratio1 = (double) width_ / (double) height_;
         double ratio2 = currentExtent_.width() / currentExtent_.height();
-         
-        if (ratio2 > ratio1)
-        {
-            currentExtent_.height(currentExtent_.width() / ratio1);
-        }
-        else if (ratio2 < ratio1)
-        {
-            currentExtent_.width(currentExtent_.height() * ratio1);
-        }       
-    }
+        if (ratio1 == ratio2) return;
 
+        switch(aspectFixMode_) 
+        {
+            case ADJUST_BBOX_HEIGHT:
+                currentExtent_.height(currentExtent_.width() / ratio1);
+                break;
+            case ADJUST_BBOX_WIDTH:
+                currentExtent_.width(currentExtent_.height() * ratio1);
+                break;
+            case ADJUST_CANVAS_HEIGHT:
+                height_ = int (width_ / ratio2 + 0.5); 
+                break;
+            case ADJUST_CANVAS_WIDTH:
+                width_ = int (height_ * ratio2 + 0.5); 
+                break;
+            case GROW_BBOX:
+                if (ratio2 > ratio1)
+                   currentExtent_.height(currentExtent_.width() / ratio1);
+                else 
+                   currentExtent_.width(currentExtent_.height() * ratio1);
+                break;  
+            case SHRINK_BBOX:
+                if (ratio2 < ratio1)
+                   currentExtent_.height(currentExtent_.width() / ratio1);
+                else 
+                   currentExtent_.width(currentExtent_.height() * ratio1);
+                break;  
+            case GROW_CANVAS:
+                if (ratio2 > ratio1)
+                    width_ = (int) (height_ * ratio2 + 0.5);
+                else
+                    height_ = int (width_ / ratio2 + 0.5); 
+                break;
+            case SHRINK_CANVAS:
+                if (ratio2 > ratio1)
+                    height_ = int (width_ / ratio2 + 0.5); 
+                else
+                    width_ = (int) (height_ * ratio2 + 0.5);
+                break;
+           default:
+              if (ratio2 > ratio1)
+                 currentExtent_.height(currentExtent_.width() / ratio1);
+              else 
+                 currentExtent_.width(currentExtent_.height() * ratio1);
+              break;  
+        }
+    }
+   
     const Envelope<double>& Map::getCurrentExtent() const
     {
         return currentExtent_;
     }
 
+   Envelope<double> Map::get_buffered_extent() const
+   {
+      double extra = 2.0 * scale() * buffer_size_;
+      Envelope<double> ext(currentExtent_);
+      ext.width(currentExtent_.width() + extra);
+      ext.height(currentExtent_.height() + extra);
+      return ext;
+   }
+   
     void Map::pan(int x,int y)
     {
         int dx = x - int(0.5 * width_);
@@ -320,6 +425,12 @@ namespace mapnik
         if (width_>0)
             return currentExtent_.width()/width_;
         return currentExtent_.width();
+    }
+
+    double Map::scale_denominator() const 
+    {
+        projection map_proj(srs_);
+        return mapnik::scale_denominator( *this, map_proj.is_geographic());    
     }
 
     CoordTransform Map::view_transform() const
@@ -415,4 +526,6 @@ namespace mapnik
     }
 
     Map::~Map() {}
+
+   
 }

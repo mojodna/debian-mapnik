@@ -80,32 +80,29 @@ namespace mapnik {
         return get_own<T>( node, std::string("CSS parameter '") + name + "'");
     }
 
-    /** Stream input operator for Color values */
-    template <typename charT, typename traits>
-    std::basic_istream<charT, traits> &
-    operator >> ( std::basic_istream<charT, traits> & s, mapnik::Color & c )
-    {
-        std::string word;
-        s >> word;
-        if ( s ) 
-        {
-            try
-            {
-                c = mapnik::color_factory::from_string( word.c_str() );
-            }
-            catch (...) 
-            {
-                s.setstate( std::ios::failbit );    
-            }
-        }
-        return s;
-    }
-
+   // specialization for color type
+   template <>
+   inline color get_css (boost::property_tree::ptree const& node, std::string const& name)
+   {
+      std::string str = get_own<std::string>( node, std::string("CSS parameter '") + name + "'"); ;
+      try
+      {
+         return mapnik::color_factory::from_string(str.c_str());
+      }
+      catch (...)
+      {
+          throw config_error(std::string("Failed to parse ") +
+                             name + "'. Expected CSS color"  +
+                             " but got '" + str + "'");
+      }
+   }
+   
+   
     template <typename charT, typename traits>
     std::basic_ostream<charT, traits> &
-    operator << ( std::basic_ostream<charT, traits> & s, const mapnik::Color & c )
+    operator << ( std::basic_ostream<charT, traits> & s, const mapnik::color & c )
     {
-        std::string hex_string( c.to_hex_string() );
+        std::string hex_string( c.to_string() );
         s << hex_string;
         return s;
     }
@@ -226,7 +223,7 @@ namespace mapnik {
     DEFINE_NAME_TRAIT( boolean );
     DEFINE_NAME_TRAIT_WITH_NAME( int, "integer" );
     DEFINE_NAME_TRAIT_WITH_NAME( std::string, "string" );
-    DEFINE_NAME_TRAIT_WITH_NAME( Color, "color" );
+    DEFINE_NAME_TRAIT_WITH_NAME( color, "color" );
 
     template <typename ENUM, int MAX>
     struct name_trait< mapnik::enumeration<ENUM, MAX> >
@@ -268,7 +265,7 @@ namespace mapnik {
             }
             catch (const boost::bad_lexical_cast & )
             {
-                throw config_error(string("Failed to parse ") +
+                throw config_error(std::string("Failed to parse ") +
                         (is_attribute ? "attribute" : "child node") + " '" +
                         name + "'. Expected " + name_trait<T>::name() +
                         " but got '" + *str + "'");
@@ -278,6 +275,40 @@ namespace mapnik {
         }
     }
 
+   template <>
+   inline color get(boost::property_tree::ptree const& node, std::string const& name, bool is_attribute,
+             color const& default_value)
+   {
+      boost::optional<std::string> str;
+      if (is_attribute)
+      {
+         str = node.get_optional<std::string>( std::string("<xmlattr>.") + name );
+      }
+      else
+      {
+         str = node.get_optional<std::string>(name );
+      }
+      
+      if ( str ) 
+      {
+         try
+         {
+            return mapnik::color_factory::from_string((*str).c_str());
+         }
+         catch (...)
+         {
+             throw config_error(std::string("Failed to parse ") +
+                                (is_attribute ? "attribute" : "child node") + " '" +
+                                name + "'. Expected " + name_trait<color>::name() +
+                                " but got '" + *str + "'");
+         }
+      } 
+      else 
+      {
+         return default_value;
+      }
+   }
+   
     template <typename T>
     T get(const boost::property_tree::ptree & node, const std::string & name, bool is_attribute)
     {
@@ -292,7 +323,7 @@ namespace mapnik {
         }
 
         if ( ! str ) {
-            throw config_error(string("Required ") +
+            throw config_error(std::string("Required ") +
                     (is_attribute ? "attribute " : "child node ") +
                     "'" + name + "' is missing");
         }
@@ -302,7 +333,7 @@ namespace mapnik {
         }
         catch (const boost::bad_lexical_cast & )
         {
-            throw config_error(string("Failed to parse ") +
+            throw config_error(std::string("Failed to parse ") +
                     (is_attribute ? "attribute" : "child node") + " '" +
                     name + "'. Expected " + name_trait<T>::name() +
                     " but got '" + *str + "'");
@@ -318,7 +349,7 @@ namespace mapnik {
         }
         catch (...)
         {
-            throw config_error(string("Failed to parse ") +
+            throw config_error(std::string("Failed to parse ") +
                     name + ". Expected " + name_trait<T>::name() +
                     " but got '" + node.data() + "'");
         }
@@ -337,22 +368,58 @@ namespace mapnik {
         {
             str = node.get_optional<std::string>(name);
         }
-
+        
         boost::optional<T> result;
-        if ( str ) {
-            try
-            {
-                result = boost::lexical_cast<T>( *str );
-            }
-            catch (const boost::bad_lexical_cast &)
-            {
-                throw config_error(string("Failed to parse ") +
-                        (is_attribute ? "attribute" : "child node") + " '" +
-                        name + "'. Expected " + name_trait<T>::name() +
-                        " but got '" + *str + "'");
-            }
-            
+        if ( str ) 
+        {
+           try
+           {
+              result = boost::lexical_cast<T>( *str );
+           }
+           catch (const boost::bad_lexical_cast &)
+           {
+               throw config_error(std::string("Failed to parse ") +
+                                 (is_attribute ? "attribute" : "child node") + " '" +
+                                 name + "'. Expected " + name_trait<T>::name() +
+                                 " but got '" + *str + "'");
+           }  
         }
+        
+        return result;
+    }
+   //
+   
+   template <>
+   inline boost::optional<color> get_optional(const boost::property_tree::ptree & node, const std::string & name,
+                                       bool is_attribute)
+    {
+        boost::optional<std::string> str;
+        if (is_attribute)
+        {
+            str = node.get_optional<std::string>( std::string("<xmlattr>.") + name);
+        }
+        else
+        {
+            str = node.get_optional<std::string>(name);
+        }
+        
+        boost::optional<color> result;
+        if ( str ) 
+        {
+           try
+           {
+              //result = boost::lexical_cast<T>( *str );
+              result = mapnik::color_factory::from_string((*str).c_str());
+           }
+           catch (...)
+           {
+               throw config_error(std::string("Failed to parse ") +
+                                  (is_attribute ? "attribute" : "child node") + " '" +
+                                  name + "'. Expected " + name_trait<color>::name() +
+                                  " but got '" + *str + "'");
+           }  
+        }
+        
         return result;
     }
 } // end of namespace mapnik

@@ -17,19 +17,28 @@
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
-# $Id: common.py 462 2007-03-13 01:17:03Z jfdoyon $
+# $Id: common.py 1126 2009-05-01 02:27:56Z dane $
+
+"""Core OGCServer classes and functions."""
 
 from exceptions import OGCException, ServerConfigurationError
-from mapnik import Map, Color, Envelope, render, rawdata, Image, Projection as MapnikProjection, render_to_file, Coord
-from PIL.Image import fromstring, new
+from mapnik import Map, Color, Envelope, render, Image, Layer, Style, Projection as MapnikProjection, Coord
+from PIL.Image import new
 from PIL.ImageDraw import Draw
 from StringIO import StringIO
 from copy import deepcopy
 from traceback import format_exception, format_exception_only
 from sys import exc_info
-from lxml import etree as ElementTree
 import re
 import sys
+
+try:
+    from lxml import etree as ElementTree
+except ImportError:
+    import xml.etree.ElementTree as ElementTree
+except ImportError:
+    import elementtree.ElementTree as ElementTree
+
 # from elementtree import ElementTree
 # ElementTree._namespace_map.update({'http://www.opengis.net/wms': 'wms',
 #                                    'http://www.opengis.net/ogc': 'ogc',
@@ -37,7 +46,7 @@ import sys
 #                                    'http://www.w3.org/2001/XMLSchema-instance': 'xsi'
 #                                    })
 
-PIL_TYPE_MAPPING = {'image/jpeg': 'JPEG', 'image/png': 'PNG'}
+PIL_TYPE_MAPPING = {'image/jpeg': 'jpeg', 'image/png': 'png'}
 
 class ParameterDefinition:
 
@@ -277,17 +286,36 @@ class CRSFactory:
         else:
             raise OGCException('Invalid CRS Namespace: %s' % crsparts[0], 'InvalidCRS')
 
+def copy_layer(obj):
+    lyr = Layer(obj.name)
+    lyr.abstract = obj.abstract
+    lyr.active = obj.active
+    lyr.clear_label_cache = obj.clear_label_cache
+    lyr.datasource = obj.datasource
+    #lyr.maxzoom = obj.maxzoom
+    #lyr.minzoom = obj.minzoom
+    lyr.queryable = obj.queryable
+    lyr.srs = obj.srs
+    lyr.title = obj.title
+    if hasattr(obj,'wmsdefaultstyle'):
+        lyr.wmsdefaultstyle = obj.wmsdefaultstyle
+    if hasattr(obj,'wmsextrastyles'):
+        lyr.wmsextrastyles = obj.wmsextrastyles
+    return lyr
+
+def copy_style(obj):      
+    sty = Style()
+    for rule in obj.rules:
+       sty.rules.append(rule)
+    return sty
+      
 class WMSBaseServiceHandler(BaseServiceHandler):
 
     def GetMap(self, params):
         m = self._buildMap(params)
         im = Image(params['width'], params['height'])
         render(m, im)
-        im = fromstring('RGBA', (params['width'], params['height']), rawdata(im))
-        fh = StringIO()
-        im.save(fh, PIL_TYPE_MAPPING[params['format']], quality=100)
-        fh.seek(0)
-        return Response(params['format'], fh.read())
+        return Response(params['format'], im.tostring(PIL_TYPE_MAPPING[params['format']]))
 
     def GetFeatureInfo(self, params, querymethodname='query_point'):
         m = self._buildMap(params)
@@ -295,20 +323,32 @@ class WMSBaseServiceHandler(BaseServiceHandler):
             writer = TextFeatureInfo()
         elif params['info_format'] == 'text/xml':
             writer = XMLFeatureInfo()
-        for layerindex, layername in enumerate(params['query_layers']):
-            if layername in params['layers']:
-                if m.layers[layerindex].queryable:
-                    features = getattr(m, querymethodname)(layerindex, params['i'], params['j'])
-                    if features:
-                        writer.addlayer(m.layers[layerindex].name)
-                    for feature in features:
+        if params['query_layers'] and params['query_layers'][0] == '__all__':
+            for layerindex, layer in enumerate(m.layers):
+                featureset = getattr(m, querymethodname)(layerindex, params['i'], params['j'])
+                features = featureset.features
+                if features:
+                    writer.addlayer(layer.name)
+                    for feat in features:
                         writer.addfeature()
-                        for prop in feature.properties:
-                            writer.addattribute(prop.key(), prop.data())
+                        for prop in feat.properties:
+                            writer.addattribute(prop[0], prop[1])
+        else:
+            for layerindex, layername in enumerate(params['query_layers']):
+                if layername in params['layers']:
+                    if m.layers[layerindex].queryable:
+                        featureset = getattr(m, querymethodname)(layerindex, params['i'], params['j'])
+                        features = featureset.features
+                        if features:
+                            writer.addlayer(m.layers[layerindex].name)
+                            for feat in features:
+                                writer.addfeature()
+                                for prop in feat.properties:
+                                    writer.addattribute(prop[0], prop[1])
+                    else:
+                        raise OGCException('Requested query layer "%s" is not marked queryable.' % layername, 'LayerNotQueryable')
                 else:
-                    raise OGCException('Requested query layer "%s" is not marked queryable.' % layername, 'LayerNotQueryable')
-            else:
-                raise OGCException('Requested query layer "%s" not in the LAYERS parameter.' % layername)
+                    raise OGCException('Requested query layer "%s" not in the LAYERS parameter.' % layername)
         return Response(params['info_format'], str(writer))
 
     def _buildMap(self, params):
@@ -322,33 +362,53 @@ class WMSBaseServiceHandler(BaseServiceHandler):
             raise OGCException('STYLES length does not match LAYERS length.')
         m = Map(params['width'], params['height'], '+init=%s' % params['crs'])
         if params.has_key('transparent') and params['transparent'] == 'FALSE':
-            m.background = params['bgcolor']
+            if params['bgcolor']:
+                m.background = params['bgcolor']
         else:
             m.background = Color(0, 0, 0, 0)
         maplayers = self.mapfactory.layers
+        orderedmaplayers = self.mapfactory.ordered_layers
         mapstyles = self.mapfactory.styles
         mapaggregatestyles = self.mapfactory.aggregatestyles
-        for layerindex, layername in enumerate(params['layers']):
-            try:
-                layer = maplayers[layername]
-            except KeyError:
-                raise OGCException('Layer "%s" not defined.' % layername, 'LayerNotDefined')
-            reqstyle = params['styles'][layerindex]
-            if reqstyle and reqstyle not in layer.wmsextrastyles:
-                raise OGCException('Invalid style "%s" requested for layer "%s".' % (reqstyle, layername), 'StyleNotDefined')
-            if not reqstyle:
+        # a non WMS spec way of requesting all layers
+        if params['layers'] and params['layers'][0] == '__all__':
+            for layername in orderedmaplayers:
+                layer = copy_layer(layername)
                 reqstyle = layer.wmsdefaultstyle
-            if reqstyle in mapaggregatestyles.keys():
-                for stylename in mapaggregatestyles[reqstyle]:
-                    layer.styles.append(stylename)
-            else:
-                layer.styles.append(reqstyle)
-            for stylename in layer.styles:
-                if stylename in mapstyles.keys():
-                    m.append_style(stylename, mapstyles[stylename])
+                if reqstyle in mapaggregatestyles.keys():
+                    for stylename in mapaggregatestyles[reqstyle]:
+                        layer.styles.append(stylename)
                 else:
-                    raise ServerConfigurationError('Layer "%s" refers to non-existent style "%s".' % (layername, stylename))
-            m.layers.append(layer)
+                    layer.styles.append(reqstyle)
+                for stylename in layer.styles:
+                    if stylename in mapstyles.keys():
+                        m.append_style(stylename, mapstyles[stylename])
+                m.layers.append(layer)
+        else:
+            for layerindex, layername in enumerate(params['layers']):
+                try:
+                    layer = copy_layer(maplayers[layername])
+                except KeyError:
+                    raise OGCException('Layer "%s" not defined.' % layername, 'LayerNotDefined')
+                try:
+                    reqstyle = params['styles'][layerindex]
+                except IndexError:
+                    reqstyle = ''
+                if reqstyle and reqstyle not in layer.wmsextrastyles:
+                    raise OGCException('Invalid style "%s" requested for layer "%s".' % (reqstyle, layername), 'StyleNotDefined')
+                if not reqstyle:
+                    reqstyle = layer.wmsdefaultstyle
+                if reqstyle in mapaggregatestyles.keys():
+                    for stylename in mapaggregatestyles[reqstyle]:
+                        layer.styles.append(stylename)
+                else:
+                    layer.styles.append(reqstyle)
+                for stylename in layer.styles:
+                    if stylename in mapstyles.keys():
+                        m.append_style(stylename, mapstyles[stylename])
+                    else:
+                        raise ServerConfigurationError('Layer "%s" refers to non-existent style "%s".' % (layername, stylename))
+                m.layers.append(layer)
         m.zoom_to_box(Envelope(params['bbox'][0], params['bbox'][1], params['bbox'][2], params['bbox'][3]))
         return m
 
@@ -360,6 +420,13 @@ class BaseExceptionHandler:
     def getresponse(self, params):
         code = ''
         message = '\n'
+        if not params:
+            message = '''
+            <h2>Welcome to the Mapnik OGCServer.</h2>
+            <h3>Ready to accept map requests...</h5>
+            <h4>For more info see: <a href="http://trac.mapnik.org/wiki/OgcServer">trac.mapnik.org</a></h4>
+            '''
+            return self.htmlhandler('', message)
         excinfo = exc_info()
         if self.debug:
             messagelist = format_exception(excinfo[0], excinfo[1], excinfo[2])
@@ -369,9 +436,18 @@ class BaseExceptionHandler:
         if isinstance(excinfo[1], OGCException) and len(excinfo[1].args) > 1:
             code = excinfo[1].args[1]
         exceptions = params.get('exceptions', None)
+        if self.debug:
+            return self.htmlhandler(code, message)
         if not exceptions or not self.handlers.has_key(exceptions):
             exceptions = self.defaulthandler
         return self.handlers[exceptions](self, code, message, params)
+
+    def htmlhandler(self,code,message):
+        if code:
+           resp_text = '<h2>OGCServer Error:</h2><pre>%s</pre>\n<h3>Traceback:</h3><pre>%s</pre>\n' %  (message, code)
+        else:
+           resp_text = message
+        return Response('text/html', resp_text)
 
     def xmlhandler(self, code, message, params):
         ogcexcetree = deepcopy(self.xmltemplate)
@@ -417,10 +493,10 @@ class TextFeatureInfo:
         self.buffer = ''
 
     def addlayer(self, name):
-        self.buffer += '[%s]\n' % name
+        self.buffer += '\n[%s]\n' % name
 
     def addfeature(self):
-        self.buffer += '\n'
+        pass#self.buffer += '\n'
 
     def addattribute(self, name, value):
         self.buffer += '%s=%s\n' % (name, str(value))
@@ -454,7 +530,7 @@ class XMLFeatureInfo:
         attname = ElementTree.Element('name')
         attname.text = name
         attvalue = ElementTree.Element('value')
-        attvalue.text = value.unicode()
+        attvalue.text = unicode(value)
         attribute.append(attname)
         attribute.append(attvalue)
         self.currentfeature.append(attribute)

@@ -35,24 +35,58 @@ static const char * label_placement_strings[] = {
     ""
 };
 
+
 IMPLEMENT_ENUM( mapnik::label_placement_e, label_placement_strings );
+
+static const char * vertical_alignment_strings[] = {
+    "top",
+    "middle",
+    "bottom",
+    ""
+};
+
+
+IMPLEMENT_ENUM( mapnik::vertical_alignment_e, vertical_alignment_strings );
 
 namespace mapnik
 {
-    text_symbolizer::text_symbolizer(std::string const& name, std::string const& face_name, unsigned size,Color const& fill)
+    text_symbolizer::text_symbolizer(std::string const& name, std::string const& face_name, unsigned size, color const& fill)
         : name_(name),
           face_name_(face_name),
+          //fontset_(default_fontset),
           size_(size),
           text_ratio_(0),
           wrap_width_(0),
           label_spacing_(0),
           label_position_tolerance_(0),
           force_odd_labels_(false),
-          max_char_angle_delta_(0),
+          max_char_angle_delta_(0.0),
           fill_(fill),
-          halo_fill_(Color(255,255,255)),
+          halo_fill_(color(255,255,255)),
           halo_radius_(0),
           label_p_(POINT_PLACEMENT),
+          valign_(BOTTOM),
+          anchor_(0.0,0.5),
+          displacement_(0.0,0.0),
+          avoid_edges_(false),
+          minimum_distance_(0.0),
+          overlap_(false) {}
+    text_symbolizer::text_symbolizer(std::string const& name, unsigned size, color const& fill)
+        : name_(name),
+          //face_name_(""),
+          //fontset_(default_fontset),
+          size_(size),
+          text_ratio_(0),
+          wrap_width_(0),
+          label_spacing_(0),
+          label_position_tolerance_(0),
+          force_odd_labels_(false),
+          max_char_angle_delta_(0.0),
+          fill_(fill),
+          halo_fill_(color(255,255,255)),
+          halo_radius_(0),
+          label_p_(POINT_PLACEMENT),
+          valign_(BOTTOM),
           anchor_(0.0,0.5),
           displacement_(0.0,0.0),
           avoid_edges_(false),
@@ -61,6 +95,7 @@ namespace mapnik
     text_symbolizer::text_symbolizer(text_symbolizer const& rhs)
         : name_(rhs.name_),
           face_name_(rhs.face_name_),
+          fontset_(rhs.fontset_),
           size_(rhs.size_),
           text_ratio_(rhs.text_ratio_),
           wrap_width_(rhs.wrap_width_),
@@ -72,6 +107,7 @@ namespace mapnik
           halo_fill_(rhs.halo_fill_),
           halo_radius_(rhs.halo_radius_),
           label_p_(rhs.label_p_),
+          valign_(rhs.valign_),
           anchor_(rhs.anchor_),
           displacement_(rhs.displacement_),
           avoid_edges_(rhs.avoid_edges_),
@@ -84,6 +120,7 @@ namespace mapnik
             return *this;
         name_ = other.name_;
         face_name_ = other.face_name_;
+        fontset_ = other.fontset_;
         size_ = other.size_;
         text_ratio_ = other.text_ratio_;
         wrap_width_ = other.wrap_width_;
@@ -95,28 +132,48 @@ namespace mapnik
         halo_fill_ = other.halo_fill_;
         halo_radius_ = other.halo_radius_;
         label_p_ = other.label_p_;
+        valign_ = other.valign_;
         anchor_ = other.anchor_;
         displacement_ = other.displacement_; 
         avoid_edges_ = other.avoid_edges_;
         minimum_distance_ = other.minimum_distance_;
         overlap_ = other.overlap_;
-
         return *this;
     } 
-
+   
     std::string const&  text_symbolizer::get_name() const
     {
         return name_;
+    }
+    
+    void text_symbolizer::set_name(std::string name)
+    {
+        name_ = name;
     }
     
     std::string const&  text_symbolizer::get_face_name() const
     {
         return face_name_;
     }
-    
+   
+    void text_symbolizer::set_face_name(std::string face_name)
+    {
+        face_name_ = face_name;
+    }
+
+    void text_symbolizer::set_fontset(FontSet fontset)
+    {
+        fontset_ = fontset;
+    }
+
+    FontSet const& text_symbolizer::get_fontset() const
+    {
+        return fontset_;
+    }
+
     unsigned  text_symbolizer::get_text_ratio() const
     {
-    return text_ratio_;
+        return text_ratio_;
     }
 
     void  text_symbolizer::set_text_ratio(unsigned ratio) 
@@ -126,7 +183,7 @@ namespace mapnik
 
     unsigned  text_symbolizer::get_wrap_width() const
     {
-    return wrap_width_;
+        return wrap_width_;
     }
 
     void  text_symbolizer::set_wrap_width(unsigned width) 
@@ -174,22 +231,32 @@ namespace mapnik
         max_char_angle_delta_ = angle;
     }
 
+    void text_symbolizer::set_text_size(unsigned size)
+    {
+        size_ = size;
+    }
+
     unsigned  text_symbolizer::get_text_size() const
     {
         return size_;
     }
+
+    void text_symbolizer::set_fill(color const& fill)
+    {
+        fill_ = fill;
+    }
 	
-    Color const&  text_symbolizer::get_fill() const
+    color const&  text_symbolizer::get_fill() const
     {
         return fill_;
     }
 	
-    void  text_symbolizer::set_halo_fill(Color const& fill)
+    void  text_symbolizer::set_halo_fill(color const& fill)
     {
         halo_fill_ = fill;
     }
 
-    Color const&  text_symbolizer::get_halo_fill() const
+    color const&  text_symbolizer::get_halo_fill() const
     {
         return halo_fill_;
     }
@@ -214,15 +281,26 @@ namespace mapnik
         return label_p_;
     }
 
+    void text_symbolizer::set_vertical_alignment(vertical_alignment_e valign)
+    {
+       valign_ = valign;
+    }
+   
+    vertical_alignment_e text_symbolizer::get_vertical_alignment() const
+    {
+       return valign_;
+    }
+    
     void  text_symbolizer::set_anchor(double x, double y)
     {
         anchor_ = boost::make_tuple(x,y);
     }
     
-    position const& text_symbolizer::get_anchor () const
+    position const& text_symbolizer::get_anchor() const
     {
         return anchor_;
     }
+    
     void  text_symbolizer::set_displacement(double x, double y)
     {
         displacement_ = boost::make_tuple(x,y);

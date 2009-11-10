@@ -19,15 +19,18 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  *
  *****************************************************************************/
-// stl
-#include <string>
-// boost
-#include <boost/algorithm/string.hpp>
-#include <boost/lexical_cast.hpp>
 // mapnik
+#include <mapnik/global.hpp>
 #include <mapnik/utils.hpp>
 #include <mapnik/unicode.hpp>
 #include "dbffile.hpp"
+// boost
+#include <boost/algorithm/string.hpp>
+#include <boost/lexical_cast.hpp>
+
+// stl
+#include <string>
+
 
 dbf_file::dbf_file()
    : num_records_(0),
@@ -39,7 +42,11 @@ dbf_file::dbf_file(std::string const& file_name)
    :num_records_(0),
     num_fields_(0),
     record_length_(0),
+#ifdef SHAPE_MEMORY_MAPPED_FILE
     file_(file_name),
+#else
+    file_(file_name,std::ios::in | std::ios::binary),
+#endif
     record_(0)
 {
    if (file_.is_open())
@@ -113,8 +120,9 @@ void dbf_file::add_attribute(int col, mapnik::transcoder const& tr, Feature cons
    if (col>=0 && col<num_fields_)
    {
       std::string name=fields_[col].name_;
-      std::string str=boost::trim_copy(std::string(record_+fields_[col].offset_,fields_[col].length_));
-        
+      std::string str(record_+fields_[col].offset_,fields_[col].length_);
+      boost::trim(str);
+      
       switch (fields_[col].type_)
       {
          case 'C':
@@ -122,7 +130,7 @@ void dbf_file::add_attribute(int col, mapnik::transcoder const& tr, Feature cons
          case 'M':
          case 'L':
          {
-            f[name] = tr.transcode(str); 
+            f[name] = tr.transcode(str.c_str()); 
             break;
          }
          case 'N':
@@ -135,27 +143,15 @@ void dbf_file::add_attribute(int col, mapnik::transcoder const& tr, Feature cons
             }
             if ( fields_[col].dec_>0 )
             {   
-               try 
-               {
-                  double d = boost::lexical_cast<double>(str);
-                  boost::put(f,name,d);
-               }
-               catch (boost::bad_lexical_cast &)
-               {
-                  boost::put(f,name,0.0);
-               }
+               double d = 0.0; 
+               std::istringstream(str) >> d; 
+               boost::put(f,name,d); 
             }
             else
             {
-               try 
-               {
-                  int i =  boost::lexical_cast<int>(str); 
-                  boost::put(f,name,i);
-               }
-               catch (boost::bad_lexical_cast &)
-               {
-                  boost::put(f,name,0);
-               }
+                int i = 0; 
+                std::istringstream(str) >> i; 
+                boost::put(f,name,i); 
             }
             break;
          }
@@ -208,7 +204,9 @@ int dbf_file::read_short()
 {
    char b[2];
    file_.read(b,2);
-   return (b[0] & 0xff) | (b[1] & 0xff) << 8;   
+   boost::int16_t val;
+   mapnik::read_int16_ndr(b,val);
+   return val;
 }
 
 
@@ -216,10 +214,10 @@ int dbf_file::read_int()
 {    
    char b[4];
    file_.read(b,4);
-   return (b[0] & 0xff) | (b[1] & 0xff) << 8 |
-      (b[2] & 0xff) << 16 | (b[3] & 0xff) <<24;
+   boost::int32_t val;
+   mapnik::read_int32_ndr(b,val);
+   return val;
 }
-
 
 void dbf_file::skip(int bytes)
 {

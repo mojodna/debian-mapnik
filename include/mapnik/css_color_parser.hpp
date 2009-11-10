@@ -25,12 +25,30 @@
 #ifndef CSS_COLOR_PARSER_HPP
 #define CSS_COLOR_PARSER_HPP
 
-#include <boost/spirit/core.hpp>
-#include <boost/spirit/symbols.hpp>
+// boost
+#include <boost/version.hpp>
+
+#if BOOST_VERSION < 103800
+  #include <boost/spirit/core.hpp>
+  #include <boost/spirit/symbols.hpp>
+#else
+  #define BOOST_SPIRIT_USE_OLD_NAMESPACE
+  #include <boost/spirit/include/classic_core.hpp>
+  #include <boost/spirit/include/classic_symbols.hpp>
+#endif
 
 using namespace boost::spirit;
 
 namespace mapnik {
+
+   template <int MIN,int MAX>
+   inline int clip_int(int val)
+   {
+      if (val < MIN ) return MIN;
+      if (val > MAX ) return MAX;
+      return val;
+   }
+   
     template <typename ColorT>
     struct named_colors : public symbols<ColorT>
     {
@@ -201,18 +219,30 @@ namespace mapnik {
             {
                 hex6 = ch_p('#') >> uint6x_p[self.actions.hex6_];
                 hex3 = ch_p('#') >> uint3x_p[self.actions.hex3_];
-                rgb = str_p("rgb") >> '(' >> uint3_p[self.actions.red_] 
-                                   >> ',' >> uint3_p[self.actions.green_] 
-                                   >> ',' >> uint3_p[self.actions.blue_] 
+                rgb = str_p("rgb") >> '(' >> int_p [self.actions.red_] 
+                                   >> ',' >> int_p [self.actions.green_] 
+                                   >> ',' >> int_p [self.actions.blue_] 
                                    >> ')';
-                rgb_percent = str_p("rgb") >> '(' >> ureal_p[self.actions.red_p_] >> '%' 
-                                           >> ',' >> ureal_p[self.actions.green_p_] >> '%'
-                                           >> ',' >> ureal_p[self.actions.blue_p_] >> '%'
+                rgba = str_p("rgba") >> '(' >> int_p [self.actions.red_]
+                                   >> ',' >> int_p [self.actions.green_]
+                                   >> ',' >> int_p [self.actions.blue_]
+                                   >> ',' >> real_p[self.actions.alpha_]
+                                   >> ')';
+                rgb_percent = str_p("rgb") >> '(' >> real_p[self.actions.red_p_] >> '%' 
+                                           >> ',' >> real_p[self.actions.green_p_] >> '%'
+                                           >> ',' >> real_p[self.actions.blue_p_] >> '%'
                                            >> ')';
-                css_color = named_colors_p[self.actions.named_] | hex6 | hex3 | rgb_percent | rgb; 
+                rgba_percent = str_p("rgba") >> '(' >> real_p[self.actions.red_p_] >> '%'
+                                           >> ',' >> real_p[self.actions.green_p_] >> '%'
+                                           >> ',' >> real_p[self.actions.blue_p_] >> '%'
+                                           >> ',' >> real_p[self.actions.alpha_]
+                                           >> ')';
+                css_color = named_colors_p[self.actions.named_] | hex6 | hex3 | rgb_percent | rgba_percent | rgb | rgba; 
             }
             boost::spirit::rule<ScannerT> rgb;
+            boost::spirit::rule<ScannerT> rgba;
             boost::spirit::rule<ScannerT> rgb_percent;
+            boost::spirit::rule<ScannerT> rgba_percent;
             boost::spirit::rule<ScannerT> hex6;
             boost::spirit::rule<ScannerT> hex3;
             boost::spirit::rule<ScannerT> css_color;
@@ -220,9 +250,10 @@ namespace mapnik {
             {
                 return css_color;
             }
-            uint_parser<unsigned, 10, 1, 3> uint3_p;
+            int_parser<int, 10, 1, -1> int_p;
             uint_parser<unsigned, 16, 6, 6> uint6x_p;
             uint_parser<unsigned, 16, 3, 3> uint3x_p;
+            real_parser<double, real_parser_policies<double>  > real_p;
             named_colors<typename ActionsT::color_type> named_colors_p;
 	    
         };
@@ -284,9 +315,9 @@ namespace mapnik {
         red_action(ColorT& c)
             : c_(c) {}
 	
-        void operator () (unsigned int r) const
+        void operator () (int r) const
         {
-            c_.set_red(r);
+           c_.set_red(clip_int<0,255>(r));
         }
         ColorT& c_;
     };
@@ -297,9 +328,9 @@ namespace mapnik {
         green_action(ColorT& c)
             : c_(c) {}
 	
-        void operator () (unsigned int g) const
+        void operator () (int g) const
         {
-            c_.set_green(g);
+           c_.set_green(clip_int<0,255>(g));
         }
         ColorT& c_;
     };
@@ -310,13 +341,30 @@ namespace mapnik {
         blue_action(ColorT& c)
             : c_(c) {}
 	
-        void operator () (unsigned int b) const
+        void operator () (int b) const
         {
-            c_.set_blue(b);
+           c_.set_blue(clip_int<0,255>(b));
         }
         ColorT& c_;
     };
     
+
+    template <typename ColorT>
+    struct alpha_action
+    {
+        alpha_action(ColorT& c)
+            : c_(c) {}
+        
+        void operator () (double a) const
+        {
+           if (a < 0.0) a = 0.0;
+           if (a > 1.0) a = 1.0;
+           c_.set_alpha(unsigned(a * 255.0 + 0.5));
+        }
+         
+        ColorT& c_;
+    };
+
 
     template <typename ColorT>
     struct red_action_p
@@ -324,13 +372,13 @@ namespace mapnik {
         red_action_p(ColorT& c)
             : c_(c) {}
 	
-        void operator () (double r) const
-        {
-            c_.set_red(unsigned((255.0 * r)/100.0 + 0.5));
-        }
-        ColorT& c_;
+       void operator () (double r) const
+       {
+           c_.set_red(clip_int<0,255>(int((255.0 * r)/100.0 + 0.5)));
+       }
+       ColorT& c_;
     };
-
+   
     template <typename ColorT>
     struct green_action_p
     {
@@ -339,7 +387,7 @@ namespace mapnik {
 	
         void operator () (double g) const
         {
-            c_.set_green(unsigned((255.0 * g)/100.0 + 0.5));
+           c_.set_green(clip_int<0,255>(int((255.0 * g)/100.0 + 0.5)));
         }
         ColorT& c_;
     };
@@ -352,36 +400,42 @@ namespace mapnik {
 	
         void operator () (double b) const
         {
-            c_.set_blue(unsigned((255.0 * b)/100.0 + 0.5));
+           c_.set_blue(clip_int<0,255>(int((255.0 * b)/100.0 + 0.5)));
         }
-        ColorT& c_;
+       ColorT& c_;
     };
-
-
+   
+   
     template <typename ColorT>
     struct actions
     {
         typedef ColorT color_type;
         actions(ColorT& c)
-            : named_(c),
-              hex6_(c),
-              hex3_(c),
-              red_(c),
-              green_(c),
-              blue_(c),
-              red_p_(c),
-              green_p_(c),
-              blue_p_(c) {}
+           : 
+           named_(c),
+           hex6_(c),
+           hex3_(c),
+           red_(c),
+           green_(c),
+           blue_(c),
+           alpha_(c),
+           red_p_(c),
+           green_p_(c),
+           blue_p_(c) 
+       {
+          c.set_alpha (255);
+       }
         
-        named_color_action<ColorT> named_;
-        hex6_action<ColorT> hex6_;
-        hex3_action<ColorT> hex3_;
-        red_action<ColorT> red_;
-        green_action<ColorT> green_;
-        blue_action<ColorT> blue_;
-        red_action_p<ColorT> red_p_;
-        green_action_p<ColorT> green_p_;
-        blue_action_p<ColorT> blue_p_;
+       named_color_action<ColorT> named_;
+       hex6_action<ColorT> hex6_;
+       hex3_action<ColorT> hex3_;
+       red_action<ColorT> red_;
+       green_action<ColorT> green_;
+       blue_action<ColorT> blue_;
+       alpha_action<ColorT> alpha_;
+       red_action_p<ColorT> red_p_;
+       green_action_p<ColorT> green_p_;
+       blue_action_p<ColorT> blue_p_;
     };
 }
 

@@ -17,7 +17,13 @@
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
-# $Id: cgiserver.py 283 2006-07-22 18:54:53Z jdoyon $
+# $Id: cgiserver.py 1033 2009-03-30 04:25:01Z dane $
+
+"""CGI/FastCGI handler for Mapnik OGC WMS Server.
+
+Requires 'jon' module.
+
+"""
 
 from os import environ
 from tempfile import gettempdir
@@ -84,6 +90,7 @@ class Handler(cgi.DebugHandler):
             raise OGCException('Operation "%s" not supported.' % request, 'OperationNotSupported')
         response = requesthandler(ogcparams)
         req.set_header('Content-Type', response.content_type)
+        req.set_header('Content-Length', str(len(response.content)))
         req.write(response.content)
 
     def traceback(self, req):
@@ -99,6 +106,7 @@ class Handler(cgi.DebugHandler):
             eh = ExceptionHandler111(self.debug)
         response = eh.getresponse(reqparams)
         req.set_header('Content-Type', response.content_type)
+        req.set_header('Content-Length', str(len(response.content)))
         req.write(response.content)
 
 def lowerparams(params):

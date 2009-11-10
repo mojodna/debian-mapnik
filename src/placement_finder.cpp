@@ -50,7 +50,7 @@
 namespace mapnik
 {
    placement::placement(string_info & info_, 
-                        shield_symbolizer const& sym)
+       shield_symbolizer const& sym, bool has_dimensions_)
       : info(info_), 
         displacement_(sym.get_displacement()),
         label_placement(sym.get_label_placement()), 
@@ -62,7 +62,8 @@ namespace mapnik
         max_char_angle_delta(sym.get_max_char_angle_delta()),
         minimum_distance(sym.get_minimum_distance()),
         avoid_edges(sym.get_avoid_edges()),
-        has_dimensions(true), 
+        has_dimensions(has_dimensions_), 
+        allow_overlap(false),
         dimensions(std::make_pair(sym.get_image()->width(),
                                   sym.get_image()->height()))
    {
@@ -82,6 +83,7 @@ namespace mapnik
         minimum_distance(sym.get_minimum_distance()),
         avoid_edges(sym.get_avoid_edges()),
         has_dimensions(false),
+        allow_overlap(sym.get_allow_overlap()),
         dimensions()
    {
    }
@@ -113,7 +115,7 @@ namespace mapnik
             double dx = x2-x1;
             double dy = y2-y1;
             
-            double segment_length = ::sqrt(dx*dx + dy*dy);
+            double segment_length = std::sqrt(dx*dx + dy*dy);
             distance +=segment_length;
             
             if (distance > target_distance)
@@ -187,7 +189,7 @@ namespace mapnik
          else 
          {
             //Add the length of this segment to the total we have saved up
-            double segment_length = sqrt(pow(old_x-new_x,2) + pow(old_y-new_y,2)); //Pythagoras
+            double segment_length = std::sqrt(std::pow(old_x-new_x,2) + std::pow(old_y-new_y,2)); //Pythagoras
             distance += segment_length;
             
             //While we have enough distance to place text in
@@ -210,7 +212,9 @@ namespace mapnik
    
    template <typename DetectorT>
    void placement_finder<DetectorT>::find_point_placement(placement & p, 
-                                                          double label_x, double label_y)
+                                                          double label_x, 
+                                                          double label_y,
+                                                          vertical_alignment_e valign)
    {
       double x, y;
       std::auto_ptr<placement_element> current_placement(new placement_element);
@@ -232,9 +236,9 @@ namespace mapnik
       // work out where our line breaks need to be
       std::vector<int> line_breaks;
       std::vector<double> line_widths;
+      std::vector<double> line_heights;
       if (wrap_at < string_width && p.info.num_characters() > 0)
       {
-         int line_count=0; 
          int last_space = 0;
          string_width = 0;
          string_height = 0;
@@ -250,7 +254,6 @@ namespace mapnik
             unsigned c = ci.character;
             word_width += ci.width;
             word_height = word_height > ci.height ? word_height : ci.height;
-            ++line_count;
         
             if (c == ' ')
             {
@@ -262,12 +265,14 @@ namespace mapnik
             }
             if (line_width > 0 && line_width > wrap_at)
             {
+               // Remove width of breaking space character since it is not rendered
+               line_width -= ci.width;
                string_width = string_width > line_width ? string_width : line_width;
                string_height += line_height;
                line_breaks.push_back(last_space);
                line_widths.push_back(line_width);
+               line_heights.push_back(line_height);
                ii = last_space;
-               line_count = 0;
                line_width = 0;
                line_height = 0;
                word_width = 0;
@@ -275,36 +280,50 @@ namespace mapnik
             }
          }
          line_width += word_width;
+         line_height = line_height > word_height ? line_height : word_height;
          string_width = string_width > line_width ? string_width : line_width;
+         string_height += line_height;
          line_breaks.push_back(p.info.num_characters() + 1);
          line_widths.push_back(line_width);
+         line_heights.push_back(line_height);
       }
       if (line_breaks.size() == 0)
       {
          line_breaks.push_back(p.info.num_characters() + 1);
          line_widths.push_back(string_width);
+         line_heights.push_back(string_height);
       }
         
       p.info.set_dimensions(string_width, string_height);
-      
-       
-      current_placement->starting_x = label_x;
-      current_placement->starting_y = label_y;
-      
-      current_placement->starting_x += boost::tuples::get<0>(p.displacement_);
-      current_placement->starting_y += boost::tuples::get<1>(p.displacement_); 
-      
-      double line_height = 0;
+        
       unsigned int line_number = 0;
       unsigned int index_to_wrap_at = line_breaks[line_number];
       double line_width = line_widths[line_number];
+      double line_height = line_heights[line_number];
     
-      x = -line_width/2.0 - 1.0;
-      y = -string_height/2.0 + 1.0;
-    
+      current_placement->starting_x = label_x;
+      if (valign == BOTTOM)
+      {
+         current_placement->starting_y = label_y;
+      }
+      else if (valign == MIDDLE)
+      {
+         current_placement->starting_y = label_y - 0.5 * (line_heights.size() - 1) * line_height ;
+      }
+      else // TOP
+      {
+         current_placement->starting_y = label_y - line_heights.size() * line_height;
+      }
+      
+      current_placement->starting_x += boost::tuples::get<0>(p.displacement_);
+      current_placement->starting_y += boost::tuples::get<1>(p.displacement_); 
+
+      x = -line_width/2.0;
+      y = -line_height/2.0;
+      
       for (unsigned i = 0; i < p.info.num_characters(); i++)
       {
-         character_info ci;;
+         character_info ci;
          ci = p.info.at(i);
             
          unsigned c = ci.character;
@@ -312,15 +331,15 @@ namespace mapnik
          {
             index_to_wrap_at = line_breaks[++line_number];
             line_width = line_widths[line_number];
+            line_height = line_heights[line_number];
             y -= line_height;
             x = -line_width/2.0;
-            line_height = 0;
             continue;
          }
          else
          {
             current_placement->add_node(c, x, y, 0.0);
-    
+            
             Envelope<double> e;
             if (p.has_dimensions)
             {
@@ -336,9 +355,10 @@ namespace mapnik
                       current_placement->starting_x + x + ci.width, 
                       current_placement->starting_y - y - ci.height);
             }
-                
+ 
             if (!dimensions_.intersects(e) || 
-                !detector_.has_placement(e, p.info.get_string(), p.minimum_distance))
+                (!p.allow_overlap && !detector_.has_point_placement(e, 
+p.minimum_distance)))
             {
                return;
             }
@@ -348,10 +368,9 @@ namespace mapnik
             p.envelopes.push(e);
          }
          x += ci.width;
-         line_height = line_height > ci.height ? line_height : ci.height;
       }
       p.placements.push_back(current_placement.release());
-      update_detector(p);
+      //update_detector(p);
    }
    
    
@@ -381,7 +400,7 @@ namespace mapnik
          {
             double dx = old_x - new_x;
             double dy = old_y - new_y;
-            double distance = sqrt(dx*dx + dy*dy);
+            double distance = std::sqrt(dx*dx + dy*dy);
             total_distance += distance;
             path_distances.push_back(distance);
          }
@@ -627,7 +646,7 @@ namespace mapnik
                
                segment_length = path_distances[index];
             }
-            while (sqrt(pow(start_x - new_x, 2) + pow(start_y - new_y, 2)) < ci.width); //Distance from start_ to new_
+            while (std::sqrt(std::pow(start_x - new_x, 2) + std::pow(start_y - new_y, 2)) < ci.width); //Distance from start_ to new_
             
             //Calculate the position to place the end of the character on
             find_line_circle_intersection(
@@ -636,7 +655,7 @@ namespace mapnik
                end_x, end_y); //results are stored in end_x, end_y
 
             //Need to calculate distance on the new segment
-            distance = sqrt(pow(old_x - end_x, 2) + pow(old_y - end_y, 2));
+            distance = std::sqrt(std::pow(old_x - end_x, 2) + std::pow(old_y - end_y, 2));
          }
          
          //Calculate angle from the start of the character to the end based on start_/end_ position
@@ -810,11 +829,11 @@ namespace mapnik
          
          //Always use the 1st one
          //We only really have one solution here, as we know the line segment will start in the circle and end outside
-         double t = (-B + sqrt(det)) / (2 * A);
+         double t = (-B + std::sqrt(det)) / (2 * A);
          ix = x1 + t * dx;
          iy = y1 + t * dy;
          
-         //t = (-B - sqrt(det)) / (2 * A);
+         //t = (-B - std::sqrt(det)) / (2 * A);
          //ix = x1 + t * dx;
          //iy = y1 + t * dy;
          

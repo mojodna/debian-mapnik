@@ -1,4 +1,4 @@
-#
+	
 # This file is part of Mapnik (c++ mapping toolkit)
 #
 # Copyright (C) 2006 Artem Pavlenko, Jean-Francois Doyon
@@ -35,22 +35,21 @@ shape_src = Split(
         shape_io.cpp
 	"""
         )
-thread_suffix = '-mt'
-if env['PLATFORM'] == 'FreeBSD':
-    thread_suffix = ''
-    
-if env['THREADING'] == 'multi':
-    libraries = ['boost_iostreams%s%s' % (env['BOOST_APPEND'],thread_suffix) ]
-else:
-    libraries = ['boost_iostreams%s' % (env['BOOST_APPEND']) ]
-    
+
+libraries = ['boost_iostreams%s' % env['BOOST_APPEND']]    
+
 if env['PLATFORM'] == 'Darwin':
     libraries.append('mapnik')
-    libraries.append('iconv')
-    if env['BIDI'] : libraries.append('fribidi')
+    libraries.append('icuuc')
+    libraries.append('icudata')
+    libraries.append('boost_system%s' % env['BOOST_APPEND'])
+    libraries.append('boost_filesystem%s' % env['BOOST_APPEND'])
 
+cxx_flags = env['CXXFLAGS']
+if env['SHAPE_MEMORY_MAPPED_FILE']:
+    cxx_flags.append('-DSHAPE_MEMORY_MAPPED_FILE')
 
-shape_inputdriver = env.SharedLibrary('shape', SHLIBSUFFIX='.input', source=shape_src, SHLIBPREFIX='', LIBS = libraries)
+shape_inputdriver = env.SharedLibrary('shape', SHLIBSUFFIX='.input', source=shape_src, SHLIBPREFIX='', LIBS = libraries, CXXFLAGS=cxx_flags)
 
-env.Install(install_prefix + '/' + env['LIBDIR_SCHEMA'] + '/mapnik/0.5/input', shape_inputdriver)
-env.Alias('install', install_prefix + '/' + env['LIBDIR_SCHEMA'] + '/mapnik/0.5/input')
+env.Install(install_prefix + '/' + env['LIBDIR_SCHEMA'] + env['LIB_DIR_NAME'] + '/input', shape_inputdriver)
+env.Alias('install', install_prefix + '/' + env['LIBDIR_SCHEMA'] + env['LIB_DIR_NAME'] + '/input')

@@ -24,6 +24,17 @@
 #include <fstream>
 #include <stdexcept>
 #include <mapnik/geom_util.hpp>
+
+// boost
+#include <boost/version.hpp>
+#include <boost/format.hpp>
+#include <boost/algorithm/string.hpp>
+#include <boost/filesystem/operations.hpp>
+
+#if BOOST_VERSION < 103600
+#include <boost/filesystem/convenience.hpp>
+#endif
+
 #include "shape_featureset.hpp"
 #include "shape_index_featureset.hpp"
 #include "shape.hpp"
@@ -45,11 +56,25 @@ shape_datasource::shape_datasource(const parameters &params)
      indexed_(false),
      desc_(*params.get<std::string>("type"), *params.get<std::string>("encoding","utf-8"))
 {
+   boost::optional<std::string> file = params.get<std::string>("file");
+   if (!file) throw datasource_exception("missing <file> parameter");
+      
    boost::optional<std::string> base = params.get<std::string>("base");
    if (base)
-      shape_name_ = *base + "/" + *params_.get<std::string>("file","");
+      shape_name_ = *base + "/" + *file;
    else
-      shape_name_ = *params_.get<std::string>("file","");
+      shape_name_ = *file;
+
+   boost::filesystem::path path(shape_name_);
+#if BOOST_VERSION >= 103600
+   path.replace_extension("");
+#else
+   path = boost::filesystem::change_extension(path,"");
+#endif
+   shape_name_ = path.string();
+
+   if (!boost::filesystem::exists(shape_name_ + ".shp")) throw datasource_exception(shape_name_ + ".shp does not exist");
+
    try
    {  
       shape_io shape(shape_name_);
@@ -109,17 +134,20 @@ void  shape_datasource::init(shape_io& shape)
    int file_code=shape.shp().read_xdr_integer();
    if (file_code!=9994)
    {
-      //invalid
-      throw datasource_exception("wrong file code");
+       //invalid file code
+       throw datasource_exception((boost::format("wrong file code : %d") % file_code).str());
    }
+   
    shape.shp().skip(5*4);
    file_length_=shape.shp().read_xdr_integer();
    int version=shape.shp().read_ndr_integer();
+   
    if (version!=1000)
    {
       //invalid version number
-      throw datasource_exception("invalid version number");
+       throw datasource_exception((boost::format("invalid version number: %d") % version).str());
    }
+   
 #ifdef MAPNIK_DEBUG
    int shape_type = shape.shp().read_ndr_integer();
 #else
