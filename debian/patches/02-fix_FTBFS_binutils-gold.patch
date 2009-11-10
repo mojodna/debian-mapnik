@@ -1,0 +1,16 @@
+---
+ utils/shapeindex/SConscript |    3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+--- mapnik-new.orig/utils/shapeindex/SConscript
++++ mapnik-new/utils/shapeindex/SConscript
+@@ -39,7 +39,8 @@ headers = ['#plugins/input/shape'] + env
+ boost_program_options = 'boost_program_options%s' % env['BOOST_APPEND']
+ boost_iostreams  = 'boost_iostreams%s' % env['BOOST_APPEND']
+ boost_filesystem = 'boost_filesystem%s' % env['BOOST_APPEND']
+-libraries =  [boost_program_options,boost_iostreams,boost_filesystem]
++boost_system = 'boost_system%s' % env['BOOST_APPEND']
++libraries =  [boost_program_options,boost_iostreams,boost_filesystem,boost_system]
+ 
+ if env['PLATFORM'] == 'Darwin' and env['BOOST_SYSTEM_REQUIRED']:
+     boost_system = 'boost_system%s' % env['BOOST_APPEND']
