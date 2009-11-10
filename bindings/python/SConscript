@@ -1,0 +1,73 @@
+#
+# This file is part of Mapnik (c++ mapping toolkit)
+#
+# Copyright (C) 2006 Artem Pavlenko, Jean-Francois Doyon
+#
+# Mapnik is free software; you can redistribute it and/or
+# modify it under the terms of the GNU Lesser General Public
+# License as published by the Free Software Foundation; either
+# version 2.1 of the License, or (at your option) any later version.
+#
+# This library is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+#
+# $Id$
+
+import glob
+import re
+import os
+
+Import('env')
+
+prefix = env['PYTHON_PREFIX'] + '/' + env['LIBDIR_SCHEMA'] + '/python' + env['PYTHON_VERSION'] + '/site-packages/'
+install_prefix = env['DESTDIR'] + '/' + prefix
+
+thread_suffix = '-mt'
+
+if env['PLATFORM'] == 'FreeBSD':
+    thread_suffix = ''
+
+linkflags = ''
+libraries = ['mapnik','png','jpeg']
+if env['THREADING'] == 'multi':
+    libraries.append('boost_python%s%s' % (env['BOOST_APPEND'],thread_suffix))
+else :
+    libraries.append('boost_python%s' % env['BOOST_APPEND'])
+
+if env['PLATFORM'] == 'Darwin':
+    if env['THREADING'] == 'multi':
+        libraries.append('boost_regex%s%s' % (env['BOOST_APPEND'],thread_suffix))
+    else :
+        libraries.append('boost_regex%s' % env['BOOST_APPEND'])
+    
+    if env['THREADING'] == 'multi':
+        libraries.append('boost_thread%s%s' % (env['BOOST_APPEND'],thread_suffix))
+
+    linkflags = '-F/ -framework Python'
+
+headers = [env['PYTHON_PREFIX'] + '/include/python' + env['PYTHON_VERSION']] + env['CPPPATH']
+
+_mapnik = env.LoadableModule('_mapnik', glob.glob('*.cpp'), LIBS=libraries, LDMODULEPREFIX='', LDMODULESUFFIX='.so', CPPPATH=headers,LINKFLAGS=linkflags)
+
+paths = """
+mapniklibpath = '%s'
+inputpluginspath = mapniklibpath + '/input'
+fontscollectionpath = mapniklibpath + '/fonts'
+"""
+
+exp =  r"%s{2,}" % os.sep
+mapnik_plugins_dir  = re.sub(exp,os.sep, env['PREFIX'] + '/'+env['LIBDIR_SCHEMA']+'/mapnik')
+file('mapnik/paths.py','w').write(paths % (mapnik_plugins_dir,))
+
+pymapnik = glob.glob('mapnik/*.py')
+env.Alias(target='install', source=env.Install(install_prefix+'/mapnik', pymapnik))
+pymapnik2 = glob.glob('mapnik/ogcserver/*.py')
+env.Alias(target='install', source=env.Install(install_prefix+'/mapnik/ogcserver', pymapnik2))
+pymapniklib = env.Install(install_prefix+'/mapnik',_mapnik)
+env.Alias(target="install",source=pymapniklib)
