@@ -15,8 +15,9 @@ mapnik (0.6.1-2) UNRELEASED; urgency=low
   * debian/watch updated to use new url
   * debian/rules: added quilt infrastructure
   * debian/patches/01-fix_deprecated_includes.patch added
+  * debian/copyright, substitute (C) with © to make lintian happy
 
- -- David Paleino <dapal@debian.org>  Tue, 10 Nov 2009 11:18:05 +0100
+ -- David Paleino <dapal@debian.org>  Tue, 10 Nov 2009 11:19:23 +0100
 
 mapnik (0.6.1-1) unstable; urgency=low
 
