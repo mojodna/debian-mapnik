@@ -1,3 +1,22 @@
+mapnik (0.6.1-2) UNRELEASED; urgency=low
+
+  [ Dominic Hargreaves ]
+  * Change Maintainer to Debian GIS Project (Closes: #551281)
+  * Add myself as an Uploader
+  * Add Vcs-Git and Vcs-Browser fields to reflect move to a
+    public repository
+
+  [ David Paleino ]
+  * debian/control:
+    - added myself to Uploaders
+    - wrapped dependency fields (eases reading diffs in commits)
+    - added quilt Build-Dependency
+  * debian/watch updated to use new url
+  * debian/rules: added quilt infrastructure
+  * debian/patches/01-fix_deprecated_includes.patch added
+
+ -- David Paleino <dapal@debian.org>  Mon, 09 Nov 2009 00:07:39 +0100
+
 mapnik (0.6.1-1) unstable; urgency=low
 
   * New upstream release (closes: #537802, #545887)

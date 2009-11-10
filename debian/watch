@@ -1,4 +1,2 @@
 version=3
-opts=downloadurlmangle=s/prdownload/download/ \
-http://developer.berlios.de/project/showfiles.php?group_id=3133 \
-http://prdownload.berlios.de/mapnik/mapnik_src-(.*).tar.gz
+http://download.berlios.de/mapnik/mapnik-(\d+.*)\.tar\.gz
