@@ -13,13 +13,15 @@ mapnik (0.6.1-2) UNRELEASED; urgency=low
     - added quilt Build-Dependency
     - remove duplicate Section in libmapnik0.6
   * debian/watch updated to use new url
-  * debian/rules: added quilt infrastructure
+  * debian/rules:
+    - added quilt infrastructure
+    - rewritten to use dh7
   * debian/patches/01-fix_deprecated_includes.patch added
   * debian/copyright, substitute (C) with © to make lintian happy
   * debian/mapnik-doc.doc-base added
   * debian/libmapnik-dev.dirs added
 
- -- David Paleino <dapal@debian.org>  Tue, 10 Nov 2009 13:30:23 +0100
+ -- David Paleino <dapal@debian.org>  Tue, 10 Nov 2009 13:30:41 +0100
 
 mapnik (0.6.1-1) unstable; urgency=low
 
