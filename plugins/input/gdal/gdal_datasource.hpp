@@ -42,9 +42,12 @@ class gdal_datasource : public mapnik::datasource
    private:
       mapnik::Envelope<double> extent_;
       std::string dataset_name_;
-      GDALDataset* dataset_;
+      int band_;
       mapnik::layer_descriptor desc_;
+      unsigned width_;
+      unsigned height_;
       bool shared_dataset_;
+      inline GDALDataset *open_dataset() const;
 };
 
 

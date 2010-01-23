@@ -40,16 +40,13 @@ libraries = ['boost_iostreams%s' % env['BOOST_APPEND']]
 
 if env['PLATFORM'] == 'Darwin':
     libraries.append('mapnik')
-    libraries.append('icuuc')
-    libraries.append('icudata')
+    libraries.append(env['ICU_LIB_NAME'])
     libraries.append('boost_system%s' % env['BOOST_APPEND'])
     libraries.append('boost_filesystem%s' % env['BOOST_APPEND'])
 
+cxx_flags = env['CXXFLAGS']
 if env['SHAPE_MEMORY_MAPPED_FILE']:
-    cxx_flags = '-DSHAPE_MEMORY_MAPPED_FILE'
-else:
-    cxx_flags = ''
-
+    cxx_flags.append('-DSHAPE_MEMORY_MAPPED_FILE')
 
 shape_inputdriver = env.SharedLibrary('shape', SHLIBSUFFIX='.input', source=shape_src, SHLIBPREFIX='', LIBS = libraries, CXXFLAGS=cxx_flags)
 

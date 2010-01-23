@@ -18,25 +18,15 @@ def test_shieldsymbolizer_missing_image():
 
 # PointSymbolizer initialization
 def test_pointsymbolizer_init():
-    p = mapnik.PointSymbolizer()
-
+    p = mapnik.PointSymbolizer() 
     eq_(p.allow_overlap, False)
-    eq_(p.opacity, 1)
-    # XXX: Waiting on Trac Ticket #114
-    #eq_(p.width, )
-    #eq_(p.height, )
-    #eq_(p.file, )
-    #eq_(p.type, )
+    eq_(p.opacity,1)
+    eq_(p.filename,'')
 
     p = mapnik.PointSymbolizer("../data/images/dummy.png", "png", 16, 16)
-
     eq_(p.allow_overlap, False)
     eq_(p.opacity, 1)
-    # XXX: Waiting on Trac Ticket #114
-    #eq_(p.width, )
-    #eq_(p.height, )
-    #eq_(p.file, )
-    #eq_(p.type, )
+    eq_(p.filename,'../data/images/dummy.png')
 
 # PointSymbolizer missing image file
 @raises(RuntimeError)
@@ -45,10 +35,12 @@ def test_pointsymbolizer_missing_image():
 
 # PointSymbolizer pickling
 def test_pointsymbolizer_pickle():
-    raise Todo("PointSymbolizer does not support pickling yet.")
-    #p = mapnik.PointSymbolizer()
-    #p2 = pickle.loads(pickle.dumps(p,pickle.HIGHEST_PROTOCOL))
-    #eq_(p2, p)    
+    p = mapnik.PointSymbolizer("../data/images/dummy.png", "png", 16, 16)
+    p2 = pickle.loads(pickle.dumps(p,pickle.HIGHEST_PROTOCOL))
+    # image type, width, and height only used in contructor...
+    eq_(p.filename, p2.filename)
+    eq_(p.allow_overlap, p2.allow_overlap)
+    eq_(p.opacity, p2.opacity)
 
 # PolygonSymbolizer initialization
 def test_polygonsymbolizer_init():
@@ -64,7 +56,14 @@ def test_polygonsymbolizer_init():
 
 # PolygonSymbolizer pickling
 def test_polygonsymbolizer_pickle():
-    raise Todo("PolygonSymbolizer does not support pickling yet.")
+    p = mapnik.PolygonSymbolizer(mapnik.Color('black'))
+    p.fill_opacity = .5
+    # does not work for some reason...
+    #eq_(pickle.loads(pickle.dumps(p)), p)
+    p2 = pickle.loads(pickle.dumps(p,pickle.HIGHEST_PROTOCOL))
+    eq_(p.fill, p2.fill)
+    eq_(p.fill_opacity, p2.fill_opacity)
+
 
 # Stroke initialization
 def test_stroke_init():
@@ -105,11 +104,13 @@ def test_stroke_pickle():
     s.add_dash(5,6)
 
     s2 = pickle.loads(pickle.dumps(s,pickle.HIGHEST_PROTOCOL))
+    eq_(s.color, s2.color)
     eq_(s.width, s2.width)
+    eq_(s.opacity, s2.opacity)
     eq_(s.get_dashes(), s2.get_dashes())
     eq_(s.line_cap, s2.line_cap)
     eq_(s.line_join, s2.line_join)
-    eq_(s.opacity, s2.opacity)
+
     
 # LineSymbolizer initialization
 def test_linesymbolizer_init():
@@ -140,7 +141,16 @@ def test_linesymbolizer_init():
 
 # LineSymbolizer pickling
 def test_linesymbolizer_pickle():
-    raise Todo("LinesSymbolizer does not support pickling yet.")
+    p = mapnik.LineSymbolizer()
+    p2 = pickle.loads(pickle.dumps(p,pickle.HIGHEST_PROTOCOL))
+    # line and stroke eq fails, so we compare attributes for now..
+    s,s2 = p.stroke, p2.stroke
+    eq_(s.color, s2.color)
+    eq_(s.opacity, s2.opacity)
+    eq_(s.width, s2.width)
+    eq_(s.get_dashes(), s2.get_dashes())
+    eq_(s.line_cap, s2.line_cap)
+    eq_(s.line_join, s2.line_join)
 
 # Shapefile initialization
 def test_shapefile_init():
@@ -184,7 +194,6 @@ def test_textsymbolizer_pickle():
     eq_(ts.text_size, 8)
     eq_(ts.fill, mapnik.Color('black'))
 
-    raise Todo("FontSet pickling support needed: http://trac.mapnik.org/ticket/348")
     ts2 = pickle.loads(pickle.dumps(ts,pickle.HIGHEST_PROTOCOL))
     eq_(ts.name, ts2.name)
     eq_(ts.face_name, ts2.face_name)
@@ -203,6 +212,19 @@ def test_textsymbolizer_pickle():
     eq_(ts.vertical_alignment, ts2.vertical_alignment)
     eq_(ts.label_spacing, ts2.label_spacing)
     eq_(ts.label_position_tolerance, ts2.label_position_tolerance)
+    
+    eq_(ts.wrap_character, ts2.wrap_character)
+    eq_(ts.text_convert, ts2.text_convert)
+    eq_(ts.line_spacing, ts2.line_spacing)
+    eq_(ts.character_spacing, ts2.character_spacing)
+    
+    # r1341
+    eq_(ts.wrap_before, ts2.wrap_before)
+    eq_(ts.horizontal_alignment, ts2.horizontal_alignment)
+    eq_(ts.justify_alignment, ts2.justify_alignment)
+    eq_(ts.opacity, ts2.opacity)
+        
+    raise Todo("FontSet pickling support needed: http://trac.mapnik.org/ticket/348")
     eq_(ts.fontset, ts2.fontset)
 
 
@@ -221,7 +243,6 @@ def test_map_init():
     eq_(m.srs, '+proj=latlong')
 
 # Map initialization from string
-# Trac Ticket #99
 def test_map_init_from_string():
     map_string = '''<Map bgcolor="steelblue" srs="+proj=latlong +datum=WGS84">
      <Style name="My Style">
@@ -246,14 +267,15 @@ def test_map_init_from_string():
 
     m = mapnik.Map(600, 300)
     
-    # TODO: Test some properties here    
     mapnik.load_map_from_string(m, map_string)
-    mapnik.load_map_from_string(m, map_string, True)
+    mapnik.load_map_from_string(m, map_string, False, "")
+    mapnik.load_map_from_string(m, map_string, True, "")
+    raise(Todo("Need to write more map property tests in 'object_test.py'..."))
 
 # Map pickling
 def test_map_pickle():
     # Fails due to scale() not matching, possibly other things
-    raise(Todo("Map does not support pickling yet (Tickets #167, #233)."))
+    raise(Todo("Map does not support pickling yet (Tickets #345)."))
 
     m = mapnik.Map(256, 256)
 

@@ -27,7 +27,9 @@
 #include "raster_datasource.hpp"
 #include "raster_info.hpp"
 
+// boost
 #include <boost/utility.hpp>
+
 
 class single_file_policy
 {
@@ -108,13 +110,16 @@ public:
       double lox = extent.minx();
       double loy = extent.miny();
    
-      int max_x = int(ceil(double(width)/double(tile_size)));
-      int max_y = int(ceil(double(height)/double(tile_size)));
+      int max_x = int(std::ceil(double(width)/double(tile_size)));
+      int max_y = int(std::ceil(double(height)/double(tile_size)));
 
       double pixel_x = extent.width()/double(width);
       double pixel_y = extent.height()/double(height);
-      std::cout << "PIXEL SIZE("<< pixel_x << "," << pixel_y << ")\n";
-      
+
+#ifdef MAPNIK_DEBUG 
+      std::cout << "Raster Plugin: PIXEL SIZE("<< pixel_x << "," << pixel_y << ")\n";
+#endif
+
       Envelope<double> e = bbox.intersect(extent);
       
       for (int x = 0 ; x < max_x ; ++x)
@@ -134,8 +139,9 @@ public:
             }
          }
       }
-      std::cout << "INFO SIZE=" << infos_.size() << " " << file << "\n";
-      
+#ifdef MAPNIK_DEBUG 
+      std::cout << "Raster Plugin: INFO SIZE=" << infos_.size() << " " << file << "\n";
+#endif
    }
    
    const_iterator begin()

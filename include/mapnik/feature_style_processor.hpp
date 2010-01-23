@@ -34,8 +34,13 @@
 #include <mapnik/utils.hpp>
 #include <mapnik/projection.hpp>
 #include <mapnik/scale_denominator.hpp>
-// boost
-#include <boost/progress.hpp>
+
+/*
+#ifdef MAPNIK_DEBUG
+#include <mapnik/wall_clock_timer.hpp>
+#endif
+*/
+
 //stl
 #include <vector>
 
@@ -69,9 +74,11 @@ namespace mapnik
 	 
          void apply()
          {
+/*
 #ifdef MAPNIK_DEBUG           
-            boost::progress_timer t(std::clog);  
+            mapnik::wall_clock_progress_timer t(std::clog, "map rendering took: ");
 #endif          
+*/
             Processor & p = static_cast<Processor&>(*this);
             p.start_map_processing(m_);
                        
@@ -105,6 +112,11 @@ namespace mapnik
          void apply_to_layer(Layer const& lay, Processor & p, 
                              projection const& proj0,double scale_denom)
          {
+/*
+#ifdef MAPNIK_DEBUG
+            wall_clock_progress_timer timer(clog, "end layer rendering: ");
+#endif
+*/
             p.start_layer_processing(lay);
             boost::shared_ptr<datasource> ds=lay.datasource();
             if (ds)
@@ -112,7 +124,7 @@ namespace mapnik
                Envelope<double> ext = m_.get_buffered_extent();
                projection proj1(lay.srs());
                proj_transform prj_trans(proj0,proj1);
-               
+
                Envelope<double> layer_ext = lay.envelope();
                double lx0 = layer_ext.minx();
                double ly0 = layer_ext.miny();
@@ -141,7 +153,7 @@ namespace mapnik
                Envelope<double> bbox(lx0,ly0,lx1,ly1);
                
                double resolution = m_.getWidth()/bbox.width();
-               query q(bbox,resolution); //BBOX query
+               query q(bbox,resolution,scale_denom); //BBOX query
                
                std::vector<std::string> const& style_names = lay.styles();
                std::vector<std::string>::const_iterator stylesIter = style_names.begin();
