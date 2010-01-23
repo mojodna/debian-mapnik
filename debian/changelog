@@ -17,13 +17,12 @@ mapnik (0.6.1-2) UNRELEASED; urgency=low
     - added quilt infrastructure
     - rewritten to use dh7
   * debian/patches/:
-    - 01-fix_deprecated_includes.patch added
     - 02-fix_FTBFS_binutils-gold.patch added (Closes: #555586)
   * debian/copyright, substitute (C) with © to make lintian happy
   * debian/mapnik-doc.doc-base added
   * debian/libmapnik-dev.dirs added
 
- -- David Paleino <dapal@debian.org>  Tue, 10 Nov 2009 18:12:57 +0100
+ -- David Paleino <dapal@debian.org>  Sat, 23 Jan 2010 09:59:55 +0100
 
 mapnik (0.6.1-1) unstable; urgency=low
 
