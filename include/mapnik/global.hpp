@@ -46,23 +46,31 @@ namespace mapnik
                                (((boost::uint32_t) ((boost::uint8_t) (A)[1])) << 16) | \
                                (((boost::uint32_t) ((boost::uint8_t) (A)[0])) << 24))
 
+#define int8net(A)  (int64_t)  (((boost::uint64_t) ((boost::uint8_t) (A)[7]))        | \
+                               (((boost::uint64_t) ((boost::uint8_t) (A)[6])) << 8)  | \
+                               (((boost::uint64_t) ((boost::uint8_t) (A)[5])) << 16) | \
+                               (((boost::uint64_t) ((boost::uint8_t) (A)[4])) << 24) | \
+                               (((boost::uint64_t) ((boost::uint8_t) (A)[3])) << 32) | \
+                               (((boost::uint64_t) ((boost::uint8_t) (A)[2])) << 40) | \
+                               (((boost::uint64_t) ((boost::uint8_t) (A)[1])) << 48) | \
+                               (((boost::uint64_t) ((boost::uint8_t) (A)[0])) << 56))
 
    typedef boost::uint8_t byte;
 #define float8net(V,M)   do { double def_temp;  \
-    ((byte*) &def_temp)[0]=(M)[7];		\
-    ((byte*) &def_temp)[1]=(M)[6];		\
-    ((byte*) &def_temp)[2]=(M)[5];		\
-    ((byte*) &def_temp)[3]=(M)[4];		\
-    ((byte*) &def_temp)[4]=(M)[3];		\
-    ((byte*) &def_temp)[5]=(M)[2];		\
-    ((byte*) &def_temp)[6]=(M)[1];		\
-    ((byte*) &def_temp)[7]=(M)[0];		\
+    ((byte*) &def_temp)[0]=(M)[7]; \
+    ((byte*) &def_temp)[1]=(M)[6]; \
+    ((byte*) &def_temp)[2]=(M)[5]; \
+    ((byte*) &def_temp)[3]=(M)[4]; \
+    ((byte*) &def_temp)[4]=(M)[3]; \
+    ((byte*) &def_temp)[5]=(M)[2]; \
+    ((byte*) &def_temp)[6]=(M)[1]; \
+    ((byte*) &def_temp)[7]=(M)[0]; \
     (V) = def_temp; } while(0)
-#define float4net(V,M)   do { float def_temp;   \
-    ((byte*) &def_temp)[0]=(M)[3];		\
-    ((byte*) &def_temp)[1]=(M)[2];		\
-    ((byte*) &def_temp)[2]=(M)[1];		\
-    ((byte*) &def_temp)[3]=(M)[0];		\
+#define float4net(V,M)   do { float def_temp; \
+    ((byte*) &def_temp)[0]=(M)[3]; \
+    ((byte*) &def_temp)[1]=(M)[2]; \
+    ((byte*) &def_temp)[2]=(M)[1]; \
+    ((byte*) &def_temp)[3]=(M)[0]; \
     (V)=def_temp; } while(0)
 
     
@@ -70,7 +78,7 @@ namespace mapnik
     inline boost::int16_t& read_int16_ndr(const char* data, boost::int16_t & val)
     {
 #ifndef MAPNIK_BIG_ENDIAN
-        memcpy(&val,data,2);
+        std::memcpy(&val,data,2);
 #else
         val = (data[0]&0xff) | 
             ((data[1]&0xff)<<8);
@@ -82,7 +90,7 @@ namespace mapnik
     inline boost::int32_t& read_int32_ndr(const char* data, boost::int32_t & val)
     {
 #ifndef MAPNIK_BIG_ENDIAN
-        memcpy(&val,data,4);
+        std::memcpy(&val,data,4);
 #else
         val = (data[0]&0xff)     | 
             ((data[1]&0xff)<<8)  | 
@@ -117,7 +125,7 @@ namespace mapnik
 #ifndef MAPNIK_BIG_ENDIAN
         val = (data[3]&0xff) | ((data[2]&0xff)<<8);
 #else
-        memcpy(&val,data,2);
+        std::memcpy(&val,data,2);
 #endif
         return val;
     }
@@ -128,7 +136,7 @@ namespace mapnik
 #ifndef MAPNIK_BIG_ENDIAN
         val = (data[3]&0xff) | ((data[2]&0xff)<<8) | ((data[1]&0xff)<<16) | ((data[0]&0xff)<<24);
 #else
-        memcpy(&val,data,4);
+        std::memcpy(&val,data,4);
 #endif
         return val;
     }

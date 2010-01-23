@@ -16,7 +16,7 @@
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
-# $Id: SConstruct 1230 2009-07-09 01:16:52Z dane $
+# $Id: SConstruct 1539 2010-01-11 01:28:42Z dane $
 
 
 import os
@@ -54,11 +54,11 @@ def regular_print(color,text,newline=True):
     else:
         print text
 
-def call(cmd):
+def call(cmd, silent=False):
     stdin, stderr = Popen(cmd,shell=True,stdout=PIPE,stderr=PIPE).communicate()
     if not stderr:
         return stdin.strip()
-    else:
+    elif not silent:
         color_print(1,'Problem encounted with SCons scripts, please post bug report to: http://trac.mapnik.org\nError was: %s' % stderr)
 
 def shortest_name(libs):
@@ -68,12 +68,45 @@ def shortest_name(libs):
             name = lib
     return name
 
-if platform.uname()[4] == 'x86_64':
-    LIBDIR_SCHEMA='lib' 
+if platform.uname()[4] == 'x86_64' and platform.system() == 'Linux':
+    LIBDIR_SCHEMA='lib64' 
 elif platform.uname()[4] == 'ppc64':
     LIBDIR_SCHEMA='lib64'
 else:
     LIBDIR_SCHEMA='lib'
+
+pretty_dep_names = {
+    'ociei':'Oracle database library | configure with OCCI_LIBS & OCCI_INCLUDES | more info: http://trac.mapnik.org/wiki/OCCI',
+    'gdal':'GDAL C++ library | configured using gdal-config program | try setting GDAL_CONFIG SCons option | more info: http://trac.mapnik.org/wiki/GDAL',
+    'ogr':'OGR-enabled GDAL C++ Library | configured using gdal-config program | try setting GDAL_CONFIG SCons option | more info: http://trac.mapnik.org/wiki/OGR',
+    'cairo':'Cairo C library | configured using pkg-config | try setting PKG_CONFIG_PATH SCons option',
+    'cairomm':'Cairomm C++ bindings to Cairo library | configured using pkg-config | try setting PKG_CONFIG_PATH SCons option',
+    'pycairo':'Python bindings to Cairo library | configured using pkg-config | try setting PKG_CONFIG_PATH SCons option',
+    'proj':'Proj.4 C Projections library | configure with PROJ_LIBS & PROJ_INCLUDES | more info: http://trac.osgeo.org/proj/',
+    'pg':'Postgres C Library requiered for PostGIS plugin | configure with pg_config program | more info: http://trac.mapnik.org/wiki/PostGIS',
+    'sqlite3':'SQLite3 C Library | configure with SQLITE_LIBS & SQLITE_INCLUDES | more info: http://trac.mapnik.org/wiki/SQLite',
+    'osm':'more info: http://trac.mapnik.org/wiki/OsmPlugin',
+    'jpeg':'JPEG C library | configure with JPEG_LIBS & JPEG_INCLUDES',
+    'tiff':'TIFF C library | configure with TIFF_LIBS & TIFF_INCLUDES',
+    'png':'PNG C library | configure with PNG_LIBS & PNG_INCLUDES',
+    'icuuc':'ICU C++ library | configure with ICU_LIBS & ICU_INCLUDES or use ICU_LIB_NAME to specify custom lib name  | more info: http://site.icu-project.org/',
+    'ltdl':'GNU Libtool | more info: http://www.gnu.org/software/libtool',
+    'z':'Z compression library | more info: http://www.zlib.net/',
+    'm':'Basic math library, part of C++ stlib',
+    'pkg-config':'pkg-config tool | more info: http://pkg-config.freedesktop.org',
+    'pg_config':'pg_config program | try setting PG_CONFIG SCons option',
+    'xml2-config':'xml2-config program | try setting XML2_CONFIG SCons option',
+    'gdal-config':'gdal-config program | try setting GDAL_CONFIG SCons option',
+    'freetype-config':'freetype-config program | try setting FREETYPE_CONFIG SCons option',
+    }
+    
+def pretty_dep(dep):
+    pretty = pretty_dep_names.get(dep)
+    if pretty:
+        return '%s (%s)' % (dep,pretty)
+    elif 'boost' in dep:
+        return '%s (%s)' % (dep,'more info see: http://trac.mapnik.org/wiki/MapnikInstallation & http://www.boost.org')
+    return dep
 
 # local file to hold custom user configuration variables
 SCONS_LOCAL_CONFIG = 'config.py'
@@ -94,9 +127,10 @@ PLUGINS = { # plugins with external dependencies
             'occi':    {'default':False,'path':'OCCI','inc':'occi.h','lib':'ociei','lang':'C++'},
             'sqlite':  {'default':False,'path':'SQLITE','inc':'sqlite3.h','lib':'sqlite3','lang':'C'},
             
-            # plugins without external dependencies requiring CheckLibWithHeader...
-            # note: osm plugin does depend on libxml2
+            # todo: osm plugin does depend on libxml2 and libcurl
             'osm':     {'default':False,'path':None,'inc':None,'lib':None,'lang':'C++'},
+
+            # plugins without external dependencies requiring CheckLibWithHeader...
             'shape':   {'default':True,'path':None,'inc':None,'lib':None,'lang':'C++'},
             'raster':  {'default':True,'path':None,'inc':None,'lib':None,'lang':'C++'},
             'kismet':  {'default':False,'path':None,'inc':None,'lib':None,'lang':'C++'},
@@ -138,12 +172,14 @@ opts.AddVariables(
     ('BOOST_TOOLKIT','Specify boost toolkit, e.g., gcc41.','',False),
     ('BOOST_ABI', 'Specify boost ABI, e.g., d.','',False),
     ('BOOST_VERSION','Specify boost version, e.g., 1_35.','',False),
+    ('BOOST_PYTHON_LIB','Specify library name or full path to boost_python lib (e.g. "boost_python-py26" or "/usr/lib/libboost_python.dylib")',''),
     
     # Variables for required dependencies
     ('FREETYPE_CONFIG', 'The path to the freetype-config executable.', 'freetype-config'),
     ('XML2_CONFIG', 'The path to the xml2-config executable.', 'xml2-config'),
     PathVariable('ICU_INCLUDES', 'Search path for ICU include files', '/usr/include', PathVariable.PathAccept),
     PathVariable('ICU_LIBS','Search path for ICU include files','/usr/' + LIBDIR_SCHEMA, PathVariable.PathAccept),
+    ('ICU_LIB_NAME', 'The library name for icu (such as icuuc, sicuuc, or icucore)', 'icuuc'),
     PathVariable('PNG_INCLUDES', 'Search path for libpng include files', '/usr/include', PathVariable.PathAccept),
     PathVariable('PNG_LIBS','Search path for libpng include files','/usr/' + LIBDIR_SCHEMA, PathVariable.PathAccept),
     PathVariable('JPEG_INCLUDES', 'Search path for libjpeg include files', '/usr/include', PathVariable.PathAccept),
@@ -174,7 +210,7 @@ opts.AddVariables(
     ('LIB_DIR_NAME','Name to use for the "lib" folder where fonts and plugins are installed','/mapnik/'),
     PathVariable('PYTHON','Full path to Python executable used to build bindings', sys.executable),
     BoolVariable('FRAMEWORK_PYTHON', 'Link against Framework Python on Mac OS X', 'True'),
-    PathVariable('FRAMEWORK_SEARCH_PATH','Top framework search path on Mac OS X', '/'),
+    ('FRAMEWORK_SEARCH_PATH','Custom framework search path on Mac OS X', ''),
     BoolVariable('FULL_LIB_PATH', 'Use the full path for the libmapnik.dylib "install_name" when linking on Mac OS X', 'True'),
     ListVariable('BINDINGS','Language bindings to build','all',['python']),
     EnumVariable('THREADING','Set threading support','multi', ['multi','single']),
@@ -210,6 +246,7 @@ pickle_store = [# Scons internal variables
         'PYTHON_VERSION',
         'PYTHON_INCLUDES',
         'PYTHON_INSTALL_LOCATION',
+        'PYTHON_SYS_PREFIX',
         'COLOR_PRINT',
         'BOOST_SYSTEM_REQUIRED',
         ]
@@ -227,15 +264,24 @@ preconfigured = False
 force_configure = False
 command_line_args = sys.argv[1:]
 
+HELP_REQUESTED = False
+
+if ('-h' in command_line_args) or ('--help' in command_line_args):
+    HELP_REQUESTED = True
+    
+
 if 'configure' in command_line_args:
     force_configure = True
-elif ('-h' in command_line_args) or ('--help' in command_line_args):
+elif HELP_REQUESTED:
     preconfigured = True # this is just to ensure config gets skipped when help is requested
 
 # initially populate environment with defaults and any possible custom arguments
 opts.Update(env)
 
 if env.has_key('COLOR_PRINT') and env['COLOR_PRINT'] == False:
+    color_print = regular_print
+
+if sys.platform == "win32":
     color_print = regular_print
 
 color_print(4,'\nWelcome to Mapnik...\n')
@@ -263,17 +309,9 @@ if opts.args:
     # now since we've got custom arguments we'll disregard any 
     # pickled environment and force another configuration
     preconfigured = False
-    if opts.args.get('FAST'):
-        # because we are clearing the 'sconf_temp' files each configure when FAST=False
-        # we now need to flush the dblite otherwise SCons will skip checks
-        # of fail because .sconsign.dblite could be out of sync with cacheing from using
-        # or moving to using FAST=True
-        try:
-            os.unlink('.sconsign.dblite')
-        except: pass
 
 elif preconfigured:
-    if ('-h' not in command_line_args) and ('--help' not in command_line_args):
+    if not HELP_REQUESTED:
         color_print(4,'Using previous successful configuration...')
         color_print(4,'Re-configure by running "python scons/scons.py configure".')
 
@@ -297,14 +335,21 @@ def CheckPKG(context, name):
 def parse_config(context, config, checks='--libs --cflags'):
     env = context.env
     tool = config.lower().replace('_','-')
+    toolname = tool
     if config == 'GDAL_CONFIG':
-        tool += ' %s' % checks
-    context.Message( 'Checking for %s... ' % tool)
+        toolname += ' %s' % checks
+    context.Message( 'Checking for %s... ' % toolname)
     cmd = '%s %s' % (env[config],checks)
     ret = context.TryAction(cmd)[0]
+    parsed = False
     if ret:
-        env.ParseConfig(cmd)
-    else:
+        try:
+            env.ParseConfig(cmd)
+            parsed = True
+        except OSError, e:
+            ret = False
+            print ' (xml2-config not found!)'
+    if not parsed:
         if config == 'GDAL_CONFIG':
             env['SKIPPED_DEPS'].append(tool)
             conf.rollback_option('GDAL_CONFIG')
@@ -320,10 +365,16 @@ def get_pkg_lib(context, config, lib):
     context.Message( 'Checking for name of %s library... ' % lib)
     cmd = '%s --libs' % env[config]
     ret = context.TryAction(cmd)[0]
+    parsed = False
     if ret:
-        libnames = re.findall(libpattern,call(cmd))
-        if libnames:
-          libname = libnames[0]
+        try:
+            libnames = re.findall(libpattern,call(cmd,silent=True))
+            if libnames:
+              libname = libnames[0]
+        except Exception, e:
+            ret = False
+            print ' unable to determine library name:'# %s' % str(e)
+            return None
     context.Result( libname )
     return libname
 
@@ -361,7 +412,7 @@ def rollback_option(context,variable):
         if item.key == variable:
             env[variable] = item.default
 
-def FindBoost(context, prefixes):
+def FindBoost(context, prefixes, thread_flag):
     """Routine to auto-find boost header dir, lib dir, and library naming structure.
     
     """
@@ -372,48 +423,48 @@ def FindBoost(context, prefixes):
     BOOST_INCLUDE_DIR = None
     BOOST_APPEND = None
     env['BOOST_APPEND'] = str()
-
+    
+    if env['THREADING'] == 'multi':
+        search_lib = 'libboost_thread'        
+    else:
+        search_lib = 'libboost_filesystem'
+    
+    prefixes.insert(0,os.path.dirname(env['BOOST_INCLUDES']))
+    prefixes.insert(0,os.path.dirname(env['BOOST_LIBS']))
     for searchDir in prefixes:
-        libItems = glob(os.path.join(searchDir, LIBDIR_SCHEMA, 'libboost_filesystem*-*.*'))
+        libItems = glob(os.path.join(searchDir, LIBDIR_SCHEMA, '%s*.*' % search_lib))
         if not libItems:
-            libItems = glob(os.path.join(searchDir, 'lib/libboost_filesystem*-*.*'))
+            libItems = glob(os.path.join(searchDir, 'lib/%s*.*' % search_lib))
         incItems = glob(os.path.join(searchDir, 'include/boost*/'))
         if len(libItems) >= 1 and len(incItems) >= 1:
             BOOST_LIB_DIR = os.path.dirname(libItems[0])
             BOOST_INCLUDE_DIR = incItems[0].rstrip('boost/')
             shortest_lib_name = shortest_name(libItems)
-            match = re.search(r'libboost_filesystem-(.*)\..*', shortest_lib_name)
-            #if hasattr(match,'groups'):
-            #   BOOST_APPEND = match.groups()[0]
-            # break
-            # XXX Debian: don't actually do this as it breaks under
-            # some conditions:
-            # http://trac.mapnik.org/ticket/438
+            match = re.search(r'%s(.*)\..*' % search_lib, shortest_lib_name)
+            if hasattr(match,'groups'):
+                BOOST_APPEND = match.groups()[0]
+            break
     
     msg = str()
     
-    if not env['BOOST_LIBS']:
-        if BOOST_LIB_DIR:
-            msg += '\n  *libs found: %s' % BOOST_LIB_DIR
-            env['BOOST_LIBS'] = BOOST_LIB_DIR
-        else:
-            env['BOOST_LIBS'] = '/usr' + LIBDIR_SCHEMA
+    if BOOST_LIB_DIR:
+        msg += '\n  *libs found: %s' % BOOST_LIB_DIR
+        env['BOOST_LIBS'] = BOOST_LIB_DIR
     else:
-        msg += '\n  *using boost lib dir: %s' % env['BOOST_LIBS']
+        env['BOOST_LIBS'] = '/usr/' + LIBDIR_SCHEMA
+        msg += '\n  *using default boost lib dir: %s' % env['BOOST_LIBS']
            
-    if not env['BOOST_INCLUDES']:
-        if BOOST_INCLUDE_DIR:
-            msg += '\n  *headers found: %s' % BOOST_INCLUDE_DIR
-            env['BOOST_INCLUDES'] = BOOST_INCLUDE_DIR
-        else:
-            env['BOOST_INCLUDES'] = '/usr/include'
+    if BOOST_INCLUDE_DIR:
+        msg += '\n  *headers found: %s' % BOOST_INCLUDE_DIR
+        env['BOOST_INCLUDES'] = BOOST_INCLUDE_DIR
     else:
-        msg += '\n  *using boost include dir: %s' % env['BOOST_INCLUDES']    
+        env['BOOST_INCLUDES'] = '/usr/include'
+        msg += '\n  *using default boost include dir: %s' % env['BOOST_INCLUDES']    
                
     if not env['BOOST_TOOLKIT'] and not env['BOOST_ABI'] and not env['BOOST_VERSION']:
         if BOOST_APPEND:
             msg += '\n  *lib naming extension found: %s' % BOOST_APPEND
-            env['BOOST_APPEND'] = '-' + BOOST_APPEND
+            env['BOOST_APPEND'] = BOOST_APPEND
         else:
             msg += '\n  *no lib naming extension found'
     else:
@@ -528,6 +579,9 @@ if not preconfigured:
 
     color_print(4,'Configuring build environment...')
 
+    if not env['FAST']:
+        SetCacheMode('force')
+    
     if env['USE_CONFIG']:
         if not env['CONFIG'].endswith('.py'):
             color_print(1,'SCons CONFIG file specified is not a python file, will not be read...')
@@ -564,30 +618,14 @@ if not preconfigured:
         mode += ' (with XML debug on)'
         
     env['PLATFORM'] = platform.uname()[0]
-    color_print (4,"Configuring on %s in *%s*..." % (env['PLATFORM'],mode))
+    color_print(4,"Configuring on %s in *%s*..." % (env['PLATFORM'],mode))
 
     env['MISSING_DEPS'] = []
     env['SKIPPED_DEPS'] = []
     
     env['LIBDIR_SCHEMA'] = LIBDIR_SCHEMA
     env['PLUGINS'] = PLUGINS
-    
-    if env['FAST']:
-        # caching is 'auto' by default in SCons
-        # But let's also cache implicit deps...
-        EnsureSConsVersion(0,98)
-        SetOption('implicit_cache', 1)
-        env.Decider('MD5-timestamp')
-        SetOption('max_drift', 1)
         
-    else:
-        # Set the cache mode to 'force' unless requested, avoiding hidden caching of Scons 'opts' in '.sconsign.dblite'
-        # This allows for a SCONS_LOCAL_CONFIG, if present, to be used as the primary means of storing paths to successful build dependencies
-        SetCacheMode('force')
-    
-    if env['JOBS'] > 1:
-        SetOption("num_jobs", env['JOBS'])  
-    
     if env['PKG_CONFIG_PATH']:
         env['ENV']['PKG_CONFIG_PATH'] = env['PKG_CONFIG_PATH']
         # otherwise this variable == os.environ["PKG_CONFIG_PATH"]
@@ -658,15 +696,23 @@ if not preconfigured:
         ['z', 'zlib.h', True,'C'],
         ['jpeg', ['stdio.h', 'jpeglib.h'], True,'C'],
         ['proj', 'proj_api.h', True,'C'],
-        ['icuuc','unicode/unistr.h',True,'C++'],
-        ['icudata','unicode/utypes.h' , True,'C++'],
+        [env['ICU_LIB_NAME'],'unicode/unistr.h',True,'C++'],
     ]
-    
+
+    # allow for mac osx /usr/lib/libicucore.dylib compatibility
+    # requires custom supplied headers since Apple does not include them
+    # details: http://lists.apple.com/archives/xcode-users/2005/Jun/msg00633.html
+    # To use system lib download and make && make install one of these:
+    # http://www.opensource.apple.com/tarballs/ICU/
+    # then copy the headers to a location that mapnik will find
+    if env['ICU_LIB_NAME'] == 'icucore':
+        env.Append(CXXFLAGS = '-DU_HIDE_DRAFT_API')
+        env.Append(CXXFLAGS = '-DUDISABLE_RENAMING')
     
     for libinfo in LIBSHEADERS:
         if not conf.CheckLibWithHeader(libinfo[0], libinfo[1], libinfo[3]):
             if libinfo[2]:
-                color_print (1,'Could not find required header or shared library for %s' % libinfo[0])
+                color_print(1,'Could not find required header or shared library for %s' % libinfo[0])
                 env['MISSING_DEPS'].append(libinfo[0])
             else:
                 color_print(4,'Could not find optional header or shared library for %s' % libinfo[0])
@@ -677,7 +723,7 @@ if not preconfigured:
     else:
         thread_flag = ''
         
-    conf.FindBoost(BOOST_SEARCH_PREFIXES)
+    conf.FindBoost(BOOST_SEARCH_PREFIXES,thread_flag)
     
     # get boost version from boost headers rather than previous approach
     # of fetching from the user provided INCLUDE path
@@ -748,7 +794,8 @@ if not preconfigured:
             backup = env.Clone().Dictionary()
             # Note, the 'delete_existing' keyword makes sure that these paths are prepended
             # to the beginning of the path list even if they already exist
-            env.PrependUnique(CPPPATH = env['%s_INCLUDES' % details['path']],delete_existing=True)
+            incpath = env['%s_INCLUDES' % details['path']]
+            env.PrependUnique(CPPPATH = incpath,delete_existing=True)
             env.PrependUnique(LIBPATH = env['%s_LIBS' % details['path']],delete_existing=True)
             if not conf.CheckLibWithHeader(details['lib'], details['inc'], details['lang']):
                 env.Replace(**backup)
@@ -785,18 +832,19 @@ if not preconfigured:
     
     if env['MISSING_DEPS']:
         # if required dependencies are missing, print warnings and then let SCons finish without building or saving local config
-        color_print(1,'\nExiting... the following required dependencies were not found:\n   - %s' % '\n   - '.join(env['MISSING_DEPS']))
+        color_print(1,'\nExiting... the following required dependencies were not found:\n   - %s' % '\n   - '.join([pretty_dep(dep) for dep in env['MISSING_DEPS']]))
         color_print(1,"\nSee the 'config.log' for details on possible problems.")
         if env['SKIPPED_DEPS']:
-            color_print(4,'\nAlso, these optional dependencies were not found:\n   - %s' % '\n   - '.join(env['SKIPPED_DEPS']))
+            color_print(4,'\nAlso, these OPTIONAL dependencies were not found:\n   - %s' % '\n   - '.join([pretty_dep(dep) for dep in env['SKIPPED_DEPS']]))
         color_print(4,"\nSet custom paths to these libraries and header files on the command-line or in a file called '%s'" % SCONS_LOCAL_CONFIG)
-        color_print(4,"    ie. $ python scons/scons.py BOOST_INCLUDES=/usr/local/include/boost-1_37 BOOST_LIBS=/usr/local/lib")
+        color_print(4,"    ie. $ python scons/scons.py BOOST_INCLUDES=/usr/local/include/ BOOST_LIBS=/usr/local/lib")
         color_print(4, "\nOnce all required dependencies are found a local '%s' will be saved and then install:" % SCONS_LOCAL_CONFIG)
         color_print(4,"    $ sudo python scons/scons.py install")
         color_print(4,"\nTo view available path variables:\n    $ python scons/scons.py --help or -h")
         color_print(4,'\nTo view overall SCons help options:\n    $ python scons/scons.py --help-options or -H\n')
         color_print(4,'More info: http://trac.mapnik.org/wiki/MapnikInstallation')
-        Exit(1)
+        if not HELP_REQUESTED:
+            Exit(1)
     else:
         # Save the custom variables in a SCONS_LOCAL_CONFIG
         # that will be reloaded to allow for `install` without re-specifying custom variables
@@ -814,24 +862,34 @@ if not preconfigured:
           color_print(4,"Did not use user config file, no custom path variables will be saved...")
 
         if env['SKIPPED_DEPS']:
-            color_print(3,'\nNote: will build without these optional dependencies:\n   - %s' % '\n   - '.join(env['SKIPPED_DEPS']))
+            color_print(3,'\nNote: will build without these OPTIONAL dependencies:\n   - %s' % '\n   - '.join([pretty_dep(dep) for dep in env['SKIPPED_DEPS']]))
             print
 
         # fetch the mapnik version header in order to set the
         # ABI version used to build libmapnik.so on linux in src/SConscript
         abi = conf.GetMapnikLibVersion()
-        abi_fallback = [0,6,1]
+        abi_fallback = [0,7,0]
         if not abi:
             color_print(1,'Problem encountered parsing mapnik version, falling back to %s' % abi_fallback)
             env['ABI_VERSION'] = abi_fallback
         else:
             env['ABI_VERSION'] = abi
 
+
         # Common C++ flags.
         if env['THREADING'] == 'multi' :
             common_cxx_flags = '-D%s -DBOOST_SPIRIT_THREADSAFE -DMAPNIK_THREADSAFE ' % env['PLATFORM'].upper()
         else :
             common_cxx_flags = '-D%s ' % env['PLATFORM'].upper()
+
+        
+        svn_version = call('svnversion')
+        if not svn_version == 'exported':
+            pattern = r'(\d+)(.*)'
+            try:
+                rev = re.match(pattern,svn_version).groups()[0]
+                common_cxx_flags += '-DSVN_REVISION=%s ' % rev
+            except: pass
             
         # Mac OSX (Darwin) special settings
         if env['PLATFORM'] == 'Darwin':
@@ -839,8 +897,10 @@ if not preconfigured:
             # Getting the macintosh version number, sticking as a compiler macro
             # for Leopard -- needed because different workarounds are needed than
             # for Tiger.
-            if platform.mac_ver()[0].startswith('10.5'):
-                common_cxx_flags += '-DOSX_LEOPARD '
+            # this was used for fribidi - not longer needed
+            # but will retain logic for future use
+            #if platform.mac_ver()[0].startswith('10.5'):
+            #    common_cxx_flags += '-DOSX_LEOPARD '
         else:
             pthread = '-pthread'
         
@@ -872,21 +932,42 @@ if not preconfigured:
             if not os.access(env['PYTHON'], os.X_OK):
                 color_print(1,"Cannot run python interpreter at '%s', make sure that you have the permissions to execute it." % env['PYTHON'])
                 Exit(1)
-        
-            sys_prefix = "%s -c 'import sys; print sys.prefix'" % env['PYTHON']
+            
+            res = os.popen('''%s -c "print 1"''' % env['PYTHON'])
+            if res.read() == '1':
+                py3 = False
+            else:
+                py3 = True
+            #sys.version_info.major == 3
+
+            if py3:
+                sys_prefix = '''%s -c "import sys; print(sys.prefix)"''' % env['PYTHON']
+            else:
+                sys_prefix = '''%s -c "import sys; print sys.prefix"''' % env['PYTHON']                
             env['PYTHON_SYS_PREFIX'] = call(sys_prefix)
             
             if HAS_DISTUTILS:                        
-                sys_version = "%s -c 'from distutils.sysconfig import get_python_version; print get_python_version()'" % env['PYTHON']
+                if py3:
+                    sys_version = '''%s -c "from distutils.sysconfig import get_python_version; print(get_python_version())"''' % env['PYTHON']
+                else:
+                    sys_version = '''%s -c "from distutils.sysconfig import get_python_version; print get_python_version()"''' % env['PYTHON']                    
                 env['PYTHON_VERSION'] = call(sys_version)
-                py_includes = "%s -c 'from distutils.sysconfig import get_python_inc; print get_python_inc()'" % env['PYTHON']
+                
+                if py3:
+                    py_includes = '''%s -c "from distutils.sysconfig import get_python_inc; print(get_python_inc())"''' % env['PYTHON']                
+                else:
+                    py_includes = '''%s -c "from distutils.sysconfig import get_python_inc; print get_python_inc()"''' % env['PYTHON']
                 env['PYTHON_INCLUDES'] = call(py_includes)
+                
                 # Note: we use the plat_specific argument here to make sure to respect the arch-specific site-packages location
-                site_packages = "%s -c 'from distutils.sysconfig import get_python_lib; print get_python_lib(plat_specific=True)'" % env['PYTHON']
+                if py3:
+                    site_packages = '''%s -c "from distutils.sysconfig import get_python_lib; print(get_python_lib(plat_specific=True))"''' % env['PYTHON']
+                else:
+                    site_packages = '''%s -c "from distutils.sysconfig import get_python_lib; print get_python_lib(plat_specific=True)"''' % env['PYTHON']                    
                 env['PYTHON_SITE_PACKAGES'] = call(site_packages)
             else:
-                env['PYTHON_SYS_PREFIX'] = os.popen("%s -c 'import sys; print sys.prefix'" % env['PYTHON']).read().strip()
-                env['PYTHON_VERSION'] = os.popen("%s -c 'import sys; print sys.version'" % env['PYTHON']).read()[0:3]
+                env['PYTHON_SYS_PREFIX'] = os.popen('''%s -c "import sys; print sys.prefix"''' % env['PYTHON']).read().strip()
+                env['PYTHON_VERSION'] = os.popen('''%s -c "import sys; print sys.version"''' % env['PYTHON']).read()[0:3]
                 env['PYTHON_INCLUDES'] = env['PYTHON_SYS_PREFIX'] + '/include/python' + env['PYTHON_VERSION']
                 env['PYTHON_SITE_PACKAGES'] = env['DESTDIR'] + '/' + env['PYTHON_SYS_PREFIX'] + '/' + env['LIBDIR_SCHEMA'] + '/python' + env['PYTHON_VERSION'] + '/site-packages/'
         
@@ -916,6 +997,9 @@ if not preconfigured:
         pickle.dump(pickle_dict,env_cache)
         env_cache.close()
         # fix up permissions on configure outputs
+        # this is hackish but avoids potential problems
+        # with a non-root configure following a root install
+        # that also triggered a re-configure
         try:
             os.chmod(SCONS_CONFIGURE_CACHE,0666)
         except: pass
@@ -925,68 +1009,84 @@ if not preconfigured:
         try:
             os.chmod('.sconsign.dblite',0666)
         except: pass
+        try:
+            for item in glob('%s/*' % SCONF_TEMP_DIR):
+                os.chmod(item,0666)
+        except: pass
 
-        # clean up test build targets
-        if not env['FAST']:
-            try:
-                for test in glob('%s/*' % SCONF_TEMP_DIR):
-                    os.unlink(test)
-            except: pass
         if 'configure' in command_line_args:
             color_print(4,'\n*Configure complete*\nNow run "python scons/scons.py" to build or "python scons/scons.py install" to install')
-            Exit(0)
+            if not HELP_REQUESTED:
+                Exit(0)
 
 # autogenerate help on default/current SCons options
 Help(opts.GenerateHelpText(env))
 
 #### Builds ####
-
-# export env so it is available in Sconscript files
-Export('env')
-
-# Build agg first, doesn't need anything special
-if env['INTERNAL_LIBAGG']:
-    SConscript('agg/SConscript')
-
-# Build the core library
-SConscript('src/SConscript')
-
-# Build the requested and able-to-be-compiled input plug-ins
-GDAL_BUILT = False
-OGR_BUILT = False
-for plugin in env['REQUESTED_PLUGINS']:
-    details = env['PLUGINS'][plugin]
-    if details['lib'] in env['LIBS']:
-        SConscript('plugins/input/%s/SConscript' % plugin)
-        if plugin == 'ogr': OGR_BUILT = True
-        if plugin == 'gdal': GDAL_BUILT = True
-        if plugin == 'ogr' or plugin == 'gdal':
-            if GDAL_BUILT and OGR_BUILT:
+if not HELP_REQUESTED:
+    # export env so it is available in Sconscript files
+    Export('env')
+    
+    
+    if env['FAST']:
+        # caching is 'auto' by default in SCons
+        # But let's also cache implicit deps...
+        EnsureSConsVersion(0,98)
+        SetOption('implicit_cache', 1)
+        env.Decider('MD5-timestamp')
+        SetOption('max_drift', 1)
+        
+    else:
+        # Set the cache mode to 'force' unless requested, avoiding hidden caching of Scons 'opts' in '.sconsign.dblite'
+        # This allows for a SCONS_LOCAL_CONFIG, if present, to be used as the primary means of storing paths to successful build dependencies
+        SetCacheMode('force')
+    
+    if env['JOBS'] > 1:
+        SetOption("num_jobs", env['JOBS'])  
+        
+    # Build agg first, doesn't need anything special
+    if env['INTERNAL_LIBAGG']:
+        SConscript('agg/SConscript')
+    
+    # Build the core library
+    SConscript('src/SConscript')
+    
+    # Build the requested and able-to-be-compiled input plug-ins
+    GDAL_BUILT = False
+    OGR_BUILT = False
+    for plugin in env['REQUESTED_PLUGINS']:
+        details = env['PLUGINS'][plugin]
+        if details['lib'] in env['LIBS']:
+            SConscript('plugins/input/%s/SConscript' % plugin)
+            if plugin == 'ogr': OGR_BUILT = True
+            if plugin == 'gdal': GDAL_BUILT = True
+            if plugin == 'ogr' or plugin == 'gdal':
+                if GDAL_BUILT and OGR_BUILT:
+                    env['LIBS'].remove(details['lib'])
+            else:
                 env['LIBS'].remove(details['lib'])
-        else:
-            env['LIBS'].remove(details['lib'])
-    elif not details['lib']:
-        # build internal shape and raster plugins
-        SConscript('plugins/input/%s/SConscript' % plugin)
-
-# Build the c++ rundemo app if requested
-if env['DEMO']:
-    SConscript('demo/c++/SConscript')
-
-# Build the pgsql2psqlite app if requested
-if env['PGSQL2SQLITE']:
-    SConscript('utils/pgsql2sqlite/SConscript')
+        elif not details['lib']:
+            # build internal shape and raster plugins
+            SConscript('plugins/input/%s/SConscript' % plugin)
     
-# Build shapeindex and remove its dependency from the LIBS
-if 'boost_program_options%s' % env['BOOST_APPEND'] in env['LIBS']:
-    SConscript('utils/shapeindex/SConscript')
-    env['LIBS'].remove('boost_program_options%s' % env['BOOST_APPEND'])
-else :
-    color_print(1,"WARNING: Cannot find boost_program_options. 'shapeindex' won't be available")
+    # Build the c++ rundemo app if requested
+    if env['DEMO']:
+        SConscript('demo/c++/SConscript')
     
-# Build the Python bindings
-if 'python' in env['BINDINGS']:
-    SConscript('bindings/python/SConscript')
-
-# Configure fonts and if requested install the bundled DejaVu fonts
-SConscript('fonts/SConscript')
+    # Build the pgsql2psqlite app if requested
+    if env['PGSQL2SQLITE']:
+        SConscript('utils/pgsql2sqlite/SConscript')
+        
+    # Build shapeindex and remove its dependency from the LIBS
+    if 'boost_program_options%s' % env['BOOST_APPEND'] in env['LIBS']:
+        SConscript('utils/shapeindex/SConscript')
+        env['LIBS'].remove('boost_program_options%s' % env['BOOST_APPEND'])
+    else :
+        color_print(1,"WARNING: Cannot find boost_program_options. 'shapeindex' won't be available")
+        
+    # Build the Python bindings
+    if 'python' in env['BINDINGS']:
+        SConscript('bindings/python/SConscript')
+    
+    # Configure fonts and if requested install the bundled DejaVu fonts
+    SConscript('fonts/SConscript')

@@ -21,7 +21,10 @@
  *****************************************************************************/
 //$Id$
 
+//boost
 #include <boost/python.hpp>
+
+// mapnik
 #include <mapnik/coord.hpp>
 #include <mapnik/projection.hpp>
 
@@ -86,11 +89,24 @@ void export_projection ()
 {
     using namespace boost::python; 
 
-    class_<projection>("Projection", init<optional<std::string const&> >())
+    class_<projection>("Projection", "Represents a map projection.",init<optional<std::string const&> >(
+              (arg("proj4_string")),
+              "Constructs a new projection from its PROJ.4 string representation.\n"
+              "\n"
+              "The parameterless version of this constructor is equivalent to\n"      
+              "   Projection('+proj=latlong +ellps=WGS84')\n"
+              "\n"
+              "The constructor will throw a RuntimeError in case the projection\n"
+              "cannot be initialized.\n"
+              )
+        )
         .def_pickle(projection_pickle_suite())
         .def ("params", make_function(&projection::params,
-                                      return_value_policy<copy_const_reference>()))
-        .add_property ("geographic",&projection::is_geographic)
+              return_value_policy<copy_const_reference>()),
+              "Returns the PROJ.4 string for this projection.\n")
+        .add_property ("geographic", &projection::is_geographic,
+              "This property is True if the projection is a geographic projection\n"
+              "(i.e. it uses lon/lat coordinates)\n")
         ;
     
     def("forward_",&forward_pt);

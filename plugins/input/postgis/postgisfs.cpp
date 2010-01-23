@@ -60,21 +60,87 @@ std::string numeric2string(const char* buf)
    
    int i = std::max(weight,int16_t(0));
    int d = 0;
+
+   // Each numeric "digit" is actually a value between 0000 and 9999 stored in a 16 bit field.
+   // For example, the number 1234567809990001 is stored as four digits: [1234] [5678] [999] [1].
+   // Note that the last two digits show that the leading 0's are lost when the number is split.
+   // We must be careful to re-insert these 0's when building the string.
+
    while ( i >= 0)
    {
-      if (i <= weight && d < ndigits)
+      if (i <= weight && d < ndigits) {
+         // All digits after the first must be padded to make the field 4 characters long
+         if (d != 0) {
+#ifdef _WINDOWS
+	     int dig = digits[d];
+	     if (dig < 10)
+	     {
+		 ss << "000"; // 0000 - 0009
+	     }
+	     else if (dig < 100)
+	     {
+		 ss << "00";  // 0010 - 0099
+	     }
+	     else
+	     {
+		 ss << "0";   // 0100 - 0999;
+	     }
+#else
+	     switch(digits[d]) {
+	     case 0 ... 9:
+		 ss << "000"; // 0000 - 0009
+		 break;
+	     case 10 ... 99:
+		 ss << "00";  // 0010 - 0099
+		 break;
+	     case 100 ... 999:
+		 ss << "0";   // 0100 - 0999
+		 break;
+	     }
+#endif
+         }
          ss <<  digits[d++];
-      else
-         ss <<  '0';
+      } else {
+         if (d == 0)
+            ss <<  "0";
+         else
+            ss <<  "0000";
+      }
       i--;
    }
    if (dscale > 0)
    {
       ss << '.';
-      while ( i >= -dscale)
+      // dscale counts the number of decimal digits following the point, not the numeric digits
+      while (dscale > 0)
       {
+         int value;
          if (i <= weight && d < ndigits)
-            ss <<  digits[d++];
+            value = digits[d++];
+         else
+            value = 0;
+
+         // Output up to 4 decimal digits for this value
+         if (dscale > 0) {
+            ss << (value / 1000);
+            value %= 1000;
+            dscale--;
+         }
+         if (dscale > 0) {
+            ss << (value / 100);
+            value %= 100;
+            dscale--;
+         }
+         if (dscale > 0) {
+            ss << (value / 10);
+            value %= 10;
+            dscale--;
+         }
+         if (dscale > 0) {
+            ss << value;
+            dscale--;
+         }
+
          i--;
       }
    }
@@ -123,6 +189,11 @@ feature_ptr postgis_featureset::next()
               else if (oid==21) //int2
               {
                  int val = int2net(buf);
+                 boost::put(*feature,name,val);
+              }
+              else if (oid==20) //int8/BigInt
+              {
+                 int val = int8net(buf);
                  boost::put(*feature,name,val);
               }
               else if (oid == 700) // float4

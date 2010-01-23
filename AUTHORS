@@ -13,6 +13,7 @@ Committers
  - David Siegel (XML)
  - Vince Spader (TextSymbolizer)
  - Dane Springmeyer (Python API, SCons) <dane.springmeyer -at- gmail.com>
+ - David Leaver (Label Placement)
  - Andreas Volz (Autotools)
  - Nick Whitelegg (OSM plugin)
 
@@ -22,30 +23,35 @@ Patches
  - Andy Allen
  - Justin Bronn
  - Christopher Brown
- - Berteun Damman
  - Toby Collet
  - Robert Coup
+ - Berteun Damman
+ - David Eastcott
  - Krzysztof Godlewski
  - Beau Gunderson
  - John Hague
+ - Aubrey Holland
  - Dennis Luxen
  - Tom MacWright
+ - Michal Migurski
  - Andrii Mishkovskyi
  - Dražen Odobašić
  - Martijn van Oosterhout
  - Cameron Patrick
  - Igor Podolskiy
- - Marcin Rudowski
  - Reid Priedhorsky
  - Brian Quinion
+ - Marcin Rudowski
  - Christopher Schmidt
  - Andreas Schneider
  - Vincent Schut
  - Ehud Shabtai
  - Steve Singer
  - Paul Smith
+ - Philipp Spitzer
  - Dave Stubbs
  - River Tarnell
+ - Alberto Valverde
  - Shaun Walbridge
  - Leslie Wu
   

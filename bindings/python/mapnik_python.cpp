@@ -46,6 +46,7 @@ void export_feature();
 void export_featureset();
 void export_datasource();
 void export_datasource_cache();
+void export_symbolizer();
 void export_point_symbolizer();
 void export_line_symbolizer();
 void export_line_pattern_symbolizer();
@@ -73,6 +74,7 @@ void export_view_transform();
 
 #if defined(HAVE_CAIRO) && defined(HAVE_PYCAIRO)
 #include <pycairo.h>
+static Pycairo_CAPI_t *Pycairo_CAPI;
 #endif
 
 void render(const mapnik::Map& map,mapnik::Image32& image, unsigned offset_x = 0, unsigned offset_y = 0)
@@ -194,19 +196,40 @@ void render_to_file1(const mapnik::Map& map,
                     const std::string& filename,
                     const std::string& format)
 {
-    mapnik::Image32 image(map.getWidth(),map.getHeight());
-    render(map,image,0,0);
-    mapnik::save_to_file(image,filename,format); 
+    if (format == "pdf" || format == "svg" || format =="ps" || format == "ARGB32" || format == "RGB24")
+    {
+#if defined(HAVE_CAIRO)
+        mapnik::save_to_cairo_file(map,filename,format);
+#else
+        throw mapnik::ImageWriterException("Cairo backend not available, cannot write to format: " + format);
+#endif
+    }
+    else 
+    {
+        mapnik::Image32 image(map.getWidth(),map.getHeight());
+        render(map,image,0,0);
+        mapnik::save_to_file(image,filename,format); 
+    }
 }
 
-void render_to_file2(const mapnik::Map& map,
-                    const std::string& filename)
+void render_to_file2(const mapnik::Map& map,const std::string& filename)
 {
-    mapnik::Image32 image(map.getWidth(),map.getHeight());
-    render(map,image,0,0);
-    mapnik::save_to_file(image,filename); 
+    std::string format = mapnik::guess_type(filename);
+    if (format == "pdf" || format == "svg" || format =="ps")
+    {
+#if defined(HAVE_CAIRO)
+        mapnik::save_to_cairo_file(map,filename,format);
+#else
+        throw mapnik::ImageWriterException("Cairo backend not available, cannot write to format: " + format);
+#endif
+    }
+    else 
+    {
+        mapnik::Image32 image(map.getWidth(),map.getHeight());
+        render(map,image,0,0);
+        mapnik::save_to_file(image,filename); 
+    }
 }
-
 
 double scale_denominator(mapnik::Map const &map, bool geographic)
 {
@@ -214,7 +237,7 @@ double scale_denominator(mapnik::Map const &map, bool geographic)
 }
 
 void translator(mapnik::config_error const & ex) {
-    PyErr_SetString(PyExc_UserWarning, ex.what());
+    PyErr_SetString(PyExc_RuntimeError, ex.what());
 }
 
 unsigned mapnik_version()
@@ -222,18 +245,48 @@ unsigned mapnik_version()
     return MAPNIK_VERSION;
 }
 
+unsigned mapnik_svn_revision()
+{
+#if defined(SVN_REVISION)
+  return SVN_REVISION;
+#else
+  return 0;
+#endif
+}
+
+// indicator for cairo rendering support inside libmapnik
 bool has_cairo()
 {
-#if defined(HAVE_CAIRO) && defined(HAVE_PYCAIRO)
+#if defined(HAVE_CAIRO)
   return true;
 #else
   return false;
 #endif
 }
 
+// indicator for pycairo support in the python bindings
+bool has_pycairo()
+{
+#if defined(HAVE_CAIRO) && defined(HAVE_PYCAIRO)
+   Pycairo_IMPORT;
+   /*!
+   Case where pycairo support has been compiled into
+   mapnik but at runtime the cairo python module 
+   is unable to be imported and therefore Pycairo surfaces 
+   and contexts cannot be passed to mapnik.render() 
+   */ 
+   if (Pycairo_CAPI == NULL) return false;
+   return true;
+#else
+   return false;
+#endif
+}
+
+
 BOOST_PYTHON_FUNCTION_OVERLOADS(load_map_overloads, load_map, 2, 3);
-BOOST_PYTHON_FUNCTION_OVERLOADS(load_map_string_overloads, load_map_string, 2, 3);
+BOOST_PYTHON_FUNCTION_OVERLOADS(load_map_string_overloads, load_map_string, 2, 4);
 BOOST_PYTHON_FUNCTION_OVERLOADS(save_map_overloads, save_map, 2, 3);
+BOOST_PYTHON_FUNCTION_OVERLOADS(save_map_to_string_overloads, save_map_to_string, 1, 2);
 
 BOOST_PYTHON_MODULE(_mapnik)
 {
@@ -243,6 +296,7 @@ BOOST_PYTHON_MODULE(_mapnik)
     using mapnik::load_map;
     using mapnik::load_map_string;
     using mapnik::save_map;
+    using mapnik::save_map_to_string;
 
     register_exception_translator<mapnik::config_error>(translator);
     register_cairo();
@@ -262,6 +316,7 @@ BOOST_PYTHON_MODULE(_mapnik)
     export_layer();
     export_stroke();
     export_datasource_cache();
+    export_symbolizer();
     export_point_symbolizer();
     export_line_symbolizer();
     export_line_pattern_symbolizer();
@@ -432,13 +487,12 @@ BOOST_PYTHON_MODULE(_mapnik)
         "\n"
         );
 */
-
+    
+    def("save_map_to_string", & save_map_to_string, save_map_to_string_overloads());
     def("mapnik_version", &mapnik_version,"Get the Mapnik version number");
+    def("mapnik_svn_revision", &mapnik_svn_revision,"Get the Mapnik svn revision");
     def("has_cairo", &has_cairo, "Get cairo library status");
-    
-    using mapnik::symbolizer;
-    class_<symbolizer>("Symbolizer",no_init)
-       ;
-    
+    def("has_pycairo", &has_pycairo, "Get pycairo module status");
+
     register_ptr_to_python<mapnik::filter_ptr>();
 }

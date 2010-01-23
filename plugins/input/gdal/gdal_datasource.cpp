@@ -28,7 +28,6 @@
 #include <mapnik/ptree_helpers.hpp>
 #include <mapnik/geom_util.hpp>
 
-
 using mapnik::datasource;
 using mapnik::parameters;
 
@@ -41,12 +40,37 @@ using mapnik::featureset_ptr;
 using mapnik::layer_descriptor;
 using mapnik::datasource_exception;
 
+
+
+/*
+ * Opens a GDALDataset and returns a pointer to it.
+ * Caller is responsible for calling GDALClose on it
+ */
+inline GDALDataset *gdal_datasource::open_dataset() const
+{
+   GDALDataset *dataset;
+#if GDAL_VERSION_NUM >= 1600
+   if (shared_dataset_)
+       dataset = reinterpret_cast<GDALDataset*>(GDALOpenShared((dataset_name_).c_str(),GA_ReadOnly));
+   else
+#endif
+       dataset = reinterpret_cast<GDALDataset*>(GDALOpen((dataset_name_).c_str(),GA_ReadOnly));
+
+   if (! dataset) throw datasource_exception(CPLGetLastErrorMsg());
+   return dataset;
+}
+
+
+
 gdal_datasource::gdal_datasource(parameters const& params)
    : datasource(params),
-     extent_(),
-     dataset_(0),
      desc_(*params.get<std::string>("type"),"utf-8")
 {
+
+#ifdef MAPNIK_DEBUG
+   std::clog << "\nGDAL Plugin: Initializing...\n";
+#endif
+
    GDALAllRegister();
 
    boost::optional<std::string> file = params.get<std::string>("file");
@@ -59,29 +83,33 @@ gdal_datasource::gdal_datasource(parameters const& params)
       dataset_name_ = *file;
 
    shared_dataset_ = *params_.get<mapnik::boolean>("shared",false);
+   band_ = *params_.get<int>("band", -1);
 
-#if GDAL_VERSION_NUM >= 1600
-   if (shared_dataset_)
-       dataset_ = reinterpret_cast<GDALDataset*>(GDALOpenShared((dataset_name_).c_str(),GA_ReadOnly));
-   else
-#endif
-       dataset_ = reinterpret_cast<GDALDataset*>(GDALOpen((dataset_name_).c_str(),GA_ReadOnly));
-
-   if (! dataset_) throw datasource_exception(CPLGetLastErrorMsg());
+   GDALDataset *dataset = open_dataset();
+   
+   // TODO: Make more class attributes from geotransform...
+   width_ = dataset->GetRasterXSize();
+   height_ = dataset->GetRasterYSize();
 
    double tr[6];
-   dataset_->GetGeoTransform(tr);
+   dataset->GetGeoTransform(tr);
+   double dx = tr[1];
+   double dy = tr[5];
    double x0 = tr[0];
    double y0 = tr[3];
-   double x1 = tr[0] + dataset_->GetRasterXSize()*tr[1] + dataset_->GetRasterYSize()*tr[2];
-   double y1 = tr[3] + dataset_->GetRasterXSize()*tr[4] + dataset_->GetRasterYSize()*tr[5];
+   double x1 = tr[0] + width_ * dx + height_ *tr[2];
+   double y1 = tr[3] + width_ *tr[4] + height_ * dy;
    extent_.init(x0,y0,x1,y1);
+   GDALClose(dataset);
+   
+#ifdef MAPNIK_DEBUG
+   std::clog << "GDAL Plugin: Raster Size=" << width_ << "," << height_ << "\n";
+   std::clog << "GDAL Plugin: Raster Extent=" << extent_ << "\n";
+#endif
+
 }
 
-gdal_datasource::~gdal_datasource()
-{
-    GDALClose (dataset_);
-}
+gdal_datasource::~gdal_datasource() {}
 
 int gdal_datasource::type() const
 {
@@ -105,15 +133,12 @@ layer_descriptor gdal_datasource::get_descriptor() const
 
 featureset_ptr gdal_datasource::features(query const& q) const
 {
-   if (dataset_)
-   {
-      return featureset_ptr(new gdal_featureset(*dataset_, q));
-   }
-   return featureset_ptr();
+   gdal_query gq = q;
+   return featureset_ptr(new gdal_featureset(*open_dataset(), band_, gq));
 }
 
 featureset_ptr gdal_datasource::features_at_point(coord2d const& pt) const
 {
-   return featureset_ptr();
+   gdal_query gq = pt;
+   return featureset_ptr(new gdal_featureset(*open_dataset(), band_, gq));
 }
-

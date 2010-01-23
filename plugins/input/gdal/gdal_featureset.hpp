@@ -25,19 +25,27 @@
 #define GDAL_FEATURESET_HPP
 
 #include <mapnik/datasource.hpp>
+#include <boost/variant.hpp>
 
 class GDALDataset;
+class GDALRasterBand;
+
+typedef boost::variant<mapnik::query,mapnik::coord2d> gdal_query;
 
 class gdal_featureset : public mapnik::Featureset
 {
    public:
       
-      gdal_featureset(GDALDataset & dataset,mapnik::query const& q);
+      gdal_featureset(GDALDataset & dataset, int band, gdal_query q);
       virtual ~gdal_featureset();
       mapnik::feature_ptr next();
    private:
+      mapnik::feature_ptr get_feature(mapnik::query const& q);
+      mapnik::feature_ptr get_feature_at_point(mapnik::coord2d const& p);
+      void get_overview_meta(GDALRasterBand * band);
       GDALDataset & dataset_;
-      mapnik::Envelope<double> query_extent_;
+      int band_;
+      gdal_query gquery_;
       bool first_;
 };
 
