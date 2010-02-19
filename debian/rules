@@ -5,7 +5,7 @@
 #export DH_VERBOSE=1
 
 # scons flags
-SCONS_FLAGS=INPUT_PLUGINS=raster,sqlite,postgis,ogr,shape,osm,gdal,kismet PROJ_INCLUDES=/usr/include PROJ_LIBS=/usr/lib INTERNAL_LIBAGG=no SYSTEM_FONTS=/usr/share/fonts/truetype/ttf-dejavu PYTHON=/usr/bin/python2.5 XMLPARSER=libxml2 DESTDIR=$(CURDIR)/debian/tmp PREFIX=/usr LIB_DIR_NAME=/mapnik/0.6
+SCONS_FLAGS=INPUT_PLUGINS=raster,sqlite,postgis,ogr,shape,osm,gdal,kismet PROJ_INCLUDES=/usr/include PROJ_LIBS=/usr/lib INTERNAL_LIBAGG=no SYSTEM_FONTS=/usr/share/fonts/truetype/ttf-dejavu PYTHON=/usr/bin/python2.5 XMLPARSER=libxml2 DESTDIR=$(CURDIR)/debian/tmp PREFIX=/usr LIB_DIR_NAME=/mapnik/0.7
 
 CFLAGS = -Wall -g
 
@@ -20,14 +20,14 @@ override_dh_auto_configure:
 	dh_auto_configure
 
 override_dh_auto_build:
-	python scons/scons.py
+	python scons/scons.py $(SCONS_FLAGS)
 	# We don't provide pkg-config files so this Makefile is just confusing
 	# when installed as a demo
 	#rm -f demo/c++/Makefile
 	dh_auto_build
 
 override_dh_auto_clean:
-	python scons/scons.py --clean
+	python scons/scons.py --clean $(SCONS_FLAGS)
 	find -name '*.pyc' -exec rm -f {} \;
 	find -name '.sconsign*' -exec rm -f {} \;
 	find -name '*.o' -exec rm -f {} \;
@@ -40,7 +40,7 @@ override_dh_auto_clean:
 	dh_auto_clean
 
 override_dh_auto_install:
-	python scons/scons.py install
+	python scons/scons.py install $(SCONS_FLAGS)
 	find $(CURDIR)/debian/tmp -name '.sconsign' -delete
 	find $(CURDIR)/debian/tmp -wholename 'c++/Makefile' -delete
 	install -m 0755 debian/mapnik-plugin-base $(CURDIR)/debian/tmp/usr/bin
