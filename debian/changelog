@@ -12,7 +12,6 @@ mapnik (0.7.0-1) UNRELEASED; urgency=low
     - added myself to Uploaders
     - added Debian OSM Team to Uploaders
     - wrapped dependency fields (eases reading diffs in commits)
-    - added quilt Build-Dependency
     - remove duplicate Section in libmapnik0.6
     - Standards-Version bumped to 3.8.4, no changes needed
     - fix Build-Dependencies:

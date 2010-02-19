@@ -4,8 +4,6 @@
 # Uncomment this to turn on verbose mode.
 #export DH_VERBOSE=1
 
-include /usr/share/quilt/quilt.make
-
 # scons flags
 SCONS_FLAGS=INPUT_PLUGINS=raster,sqlite,postgis,ogr,shape,osm,gdal,kismet PROJ_INCLUDES=/usr/include PROJ_LIBS=/usr/lib INTERNAL_LIBAGG=no SYSTEM_FONTS=/usr/share/fonts/truetype/ttf-dejavu PYTHON=/usr/bin/python2.5 XMLPARSER=libxml2 DESTDIR=$(CURDIR)/debian/tmp PREFIX=/usr LIB_DIR_NAME=/mapnik/0.6
 

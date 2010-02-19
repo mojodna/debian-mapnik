@@ -4,7 +4,6 @@ Maintainer: Debian GIS Project <pkg-grass-devel@lists.alioth.debian.org>
 Uploaders: Debian OpenStreetMap Team <pkg-osm-maint@lists.alioth.debian.org>,
  David Paleino <dapal@debian.org>
 Build-Depends:
- quilt,
  python-support (>= 0.90.0~),
  debhelper (>= 7.0.50~),
  python2.5-dev,
