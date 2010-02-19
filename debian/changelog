@@ -24,8 +24,9 @@ mapnik (0.6.1-2) UNRELEASED; urgency=low
   * debian/mapnik-doc.doc-base added
   * debian/libmapnik-dev.dirs added
   * debian/*.1 moved to debian/manpages/
+  * debian/compat bumped to 7
 
- -- David Paleino <dapal@debian.org>  Fri, 19 Feb 2010 20:36:25 +0100
+ -- David Paleino <dapal@debian.org>  Fri, 19 Feb 2010 20:37:06 +0100
 
 mapnik (0.6.1-1) unstable; urgency=low
 
