@@ -6,6 +6,7 @@ mapnik (0.6.1-2) UNRELEASED; urgency=low
     public repository
 
   [ David Paleino ]
+  * Package converted to 3.0 (quilt) format
   * debian/control:
     - added myself to Uploaders
     - added Debian OSM Team to Uploaders
@@ -23,7 +24,7 @@ mapnik (0.6.1-2) UNRELEASED; urgency=low
   * debian/mapnik-doc.doc-base added
   * debian/libmapnik-dev.dirs added
 
- -- David Paleino <dapal@debian.org>  Fri, 19 Feb 2010 20:30:15 +0100
+ -- David Paleino <dapal@debian.org>  Fri, 19 Feb 2010 20:32:15 +0100
 
 mapnik (0.6.1-1) unstable; urgency=low
 
