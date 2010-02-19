@@ -40,7 +40,7 @@ Homepage: http://www.mapnik.org/
 Vcs-Git: git://git.debian.org/pkg-grass/mapnik.git
 Vcs-Browser: http://git.debian.org/?p=pkg-grass/mapnik.git
 
-Package: libmapnik0.6
+Package: libmapnik0.7
 Architecture: any
 Depends:
  ${shlibs:Depends},
@@ -66,7 +66,7 @@ Package: libmapnik-dev
 Section: libdevel
 Architecture: any
 Depends:
- libmapnik0.6 (= ${binary:Version}),
+ libmapnik0.7 (= ${binary:Version}),
  libc6-dev | libc-dev,
  libboost-thread-dev,
  libboost-filesystem-dev,
