@@ -12,6 +12,7 @@ mapnik (0.6.1-2) UNRELEASED; urgency=low
     - wrapped dependency fields (eases reading diffs in commits)
     - added quilt Build-Dependency
     - remove duplicate Section in libmapnik0.6
+    - Standards-Version bumped to 3.8.4, no changes needed
   * debian/watch updated to use new url
   * debian/rules:
     - added quilt infrastructure
@@ -22,7 +23,7 @@ mapnik (0.6.1-2) UNRELEASED; urgency=low
   * debian/mapnik-doc.doc-base added
   * debian/libmapnik-dev.dirs added
 
- -- David Paleino <dapal@debian.org>  Fri, 19 Feb 2010 20:25:11 +0100
+ -- David Paleino <dapal@debian.org>  Fri, 19 Feb 2010 20:30:15 +0100
 
 mapnik (0.6.1-1) unstable; urgency=low
 

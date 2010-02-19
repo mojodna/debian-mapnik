@@ -34,7 +34,7 @@ Build-Depends: python,
  libsqlite3-dev,
  libcurl4-gnutls-dev,
  libsigc++-2.0-dev
-Standards-Version: 3.8.3
+Standards-Version: 3.8.4
 Section: libs
 XS-Python-Version: 2.5
 Homepage: http://www.mapnik.org/
