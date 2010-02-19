@@ -2,7 +2,6 @@ mapnik (0.6.1-2) UNRELEASED; urgency=low
 
   [ Dominic Hargreaves ]
   * Change Maintainer to Debian GIS Project (Closes: #551281)
-  * Add myself as an Uploader
   * Add Vcs-Git and Vcs-Browser fields to reflect move to a
     public repository
 
