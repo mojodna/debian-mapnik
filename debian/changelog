@@ -18,10 +18,12 @@ mapnik (0.7.0-1) UNRELEASED; urgency=low
       + bump debhelper version
       + use python-support instead of python-central
       + drop useless dependency on python
+    - support Python >= 2.5
   * debian/watch updated to use new url
   * debian/rules:
     - added quilt infrastructure
     - rewritten to use dh7
+    - handle multiple Python versions
   * debian/patches/:
     - 02-fix_FTBFS_binutils-gold.patch added (Closes: #555586)
   * debian/copyright, substitute (C) with © to make lintian happy
@@ -30,7 +32,7 @@ mapnik (0.7.0-1) UNRELEASED; urgency=low
   * debian/*.1 moved to debian/manpages/
   * debian/compat bumped to 7
 
- -- David Paleino <dapal@debian.org>  Fri, 19 Feb 2010 20:38:25 +0100
+ -- David Paleino <dapal@debian.org>  Fri, 19 Feb 2010 23:50:41 +0100
 
 mapnik (0.6.1-1) unstable; urgency=low
 
