@@ -1,4 +1,4 @@
-mapnik (0.6.1-2) UNRELEASED; urgency=low
+mapnik (0.7.0-1) UNRELEASED; urgency=low
 
   [ Dominic Hargreaves ]
   * Change Maintainer to Debian GIS Project (Closes: #551281)
@@ -6,6 +6,7 @@ mapnik (0.6.1-2) UNRELEASED; urgency=low
     public repository
 
   [ David Paleino ]
+  * New upstream release
   * Package converted to 3.0 (quilt) format
   * debian/control:
     - added myself to Uploaders
