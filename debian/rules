@@ -44,8 +44,8 @@ override_dh_auto_clean:
 	dh_auto_clean
 
 override_dh_auto_install:
-	find $(CURDIR)/debian/tmp -name '.sconsign' -delete
-	find $(CURDIR)/debian/tmp -wholename 'c++/Makefile' -delete
+	-find $(CURDIR)/debian/tmp -name '.sconsign' -delete
+	-find $(CURDIR)/debian/tmp -wholename 'c++/Makefile' -delete
 	install -m 0755 debian/mapnik-plugin-base $(CURDIR)/debian/tmp/usr/bin
 
 override_dh_installexamples:
