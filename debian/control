@@ -1,7 +1,8 @@
 Source: mapnik
 Priority: optional
 Maintainer: Debian GIS Project <pkg-grass-devel@lists.alioth.debian.org>
-Uploaders: David Paleino <dapal@debian.org>
+Uploaders: Debian OpenStreetMap Team <pkg-osm-maint@lists.alioth.debian.org>,
+ David Paleino <dapal@debian.org>
 Build-Depends: python,
  debhelper (>= 5.0.38),
  quilt,

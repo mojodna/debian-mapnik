@@ -8,6 +8,7 @@ mapnik (0.6.1-2) UNRELEASED; urgency=low
   [ David Paleino ]
   * debian/control:
     - added myself to Uploaders
+    - added Debian OSM Team to Uploaders
     - wrapped dependency fields (eases reading diffs in commits)
     - added quilt Build-Dependency
     - remove duplicate Section in libmapnik0.6
@@ -21,7 +22,7 @@ mapnik (0.6.1-2) UNRELEASED; urgency=low
   * debian/mapnik-doc.doc-base added
   * debian/libmapnik-dev.dirs added
 
- -- David Paleino <dapal@debian.org>  Sat, 23 Jan 2010 09:59:55 +0100
+ -- David Paleino <dapal@debian.org>  Fri, 19 Feb 2010 20:25:11 +0100
 
 mapnik (0.6.1-1) unstable; urgency=low
 
