@@ -25,7 +25,10 @@ override_dh_auto_build:
 	done
 
 	# build Python API documentation
+	# and trick epydoc into loading the shlib too
+	ln -s ../_mapnik.so bindings/python/mapnik/
 	( cd docs/epydoc_config ; ./build_epydoc.sh )
+	rm -rf bindings/python/mapnik/_mapnik.so
 
 	dh_auto_build
 
