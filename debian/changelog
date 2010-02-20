@@ -21,6 +21,7 @@ mapnik (0.7.0-1) UNRELEASED; urgency=low
       + added scons build-dependency, don't use the embedded one
     - support Python >= 2.5
     - libmapnik0.6 → libmapnik0.7 because of SONAME bump
+    - added ${misc:Depends} where missing
   * debian/watch updated to use new url
   * debian/rules:
     - added quilt infrastructure
@@ -34,7 +35,7 @@ mapnik (0.7.0-1) UNRELEASED; urgency=low
   * debian/*.1 moved to debian/manpages/
   * debian/compat bumped to 7
 
- -- David Paleino <dapal@debian.org>  Sat, 20 Feb 2010 15:55:42 +0100
+ -- David Paleino <dapal@debian.org>  Sat, 20 Feb 2010 17:54:08 +0100
 
 mapnik (0.6.1-1) unstable; urgency=low
 
