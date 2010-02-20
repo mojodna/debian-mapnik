@@ -25,7 +25,8 @@ override_dh_auto_build:
 	done
 	dh_auto_build
 
-	dh_install
+override_dh_prep:
+	dh_prep -Xdebian/tmp
 
 override_dh_auto_clean:
 	scons --clean $(SCONS_FLAGS)
