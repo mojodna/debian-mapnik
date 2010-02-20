@@ -32,6 +32,11 @@ override_dh_auto_build:
 override_dh_prep:
 	dh_prep -Xdebian/tmp
 
+override_dh_install:
+	dh_install
+	find $(CURDIR)/debian/ -name "*.png" | xargs chmod -x
+	find $(CURDIR)/debian/ -name "modserver.py" | xargs chmod -x
+
 override_dh_auto_clean:
 	scons --clean $(SCONS_FLAGS)
 	find -name '*.pyc' -exec rm -f {} \;
@@ -40,9 +45,6 @@ override_dh_auto_clean:
 	rm -rf .sconf_temp config.log bindings/python/mapnik/paths.py \
 		utils/shapeindex/shapeindex config.py config.cache \
 		docs/api_docs/python/*
-
-	# Lintian fix
-	chmod -x demo/viewer/images/*.png bindings/python/mapnik/ogcserver/modserver.py
 
 	dh_auto_clean
 
