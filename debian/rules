@@ -23,6 +23,9 @@ override_dh_auto_build:
 		$$py scons/scons.py $(SCONS_FLAGS) $(CFLAGS) PYTHON=/usr/bin/$$py configure ; \
 		$$py scons/scons.py $(SCONS_FLAGS) PYTHON=/usr/bin/$$py ; \
 		$$py scons/scons.py $(SCONS_FLAGS) PYTHON=/usr/bin/$$py install ; \
+		find $(CURDIR)/debian/tmp -name '.sconsign' -delete ; \
+		find $(CURDIR)/debian/tmp -wholename 'c++/Makefile' -delete ; \
+		install -m 0755 debian/mapnik-plugin-base $(CURDIR)/debian/tmp/usr/bin ; \
 		dh_auto_build ; \
 		dh_auto_clean ; \
 	done
@@ -42,11 +45,6 @@ override_dh_auto_clean:
 	chmod -x demo/viewer/images/*.png bindings/python/mapnik/ogcserver/modserver.py
 
 	dh_auto_clean
-
-override_dh_auto_install:
-	-find $(CURDIR)/debian/tmp -name '.sconsign' -delete
-	-find $(CURDIR)/debian/tmp -wholename 'c++/Makefile' -delete
-	install -m 0755 debian/mapnik-plugin-base $(CURDIR)/debian/tmp/usr/bin
 
 override_dh_installexamples:
 	dh_installexamples -Xdata/new
