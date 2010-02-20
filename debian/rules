@@ -16,7 +16,7 @@ else
 endif
 
 override_dh_auto_configure:
-	scons $(SCONS_FLAGS) $(CFLAGS) configure
+	scons $(SCONS_FLAGS) CCFLAGS="$(CFLAGS)" configure
 	dh_auto_configure
 
 override_dh_auto_build:
