@@ -16,12 +16,12 @@ else
 endif
 
 override_dh_auto_configure:
-	python scons/scons.py $(SCONS_FLAGS) $(CFLAGS) configure
+	scons $(SCONS_FLAGS) $(CFLAGS) configure
 	dh_auto_configure
 
 override_dh_auto_build:
 	for py in $(shell pyversions -r); do \
-		$$py scons/scons.py $(SCONS_FLAGS) PYTHON=/usr/bin/$$py ; \
+		scons $(SCONS_FLAGS) PYTHON=/usr/bin/$$py ; \
 	done
 	dh_auto_build
 
@@ -30,7 +30,7 @@ override_dh_auto_install:
 	dh_auto_install
 
 override_dh_auto_clean:
-	python scons/scons.py --clean $(SCONS_FLAGS)
+	scons --clean $(SCONS_FLAGS)
 	find -name '*.pyc' -exec rm -f {} \;
 	find -name '.sconsign*' -exec rm -f {} \;
 	find -name '*.o' -exec rm -f {} \;

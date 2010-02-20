@@ -18,6 +18,7 @@ mapnik (0.7.0-1) UNRELEASED; urgency=low
       + bump debhelper version
       + use python-support instead of python-central
       + drop useless dependency on python
+      + added scons build-dependency, don't use the embedded one
     - support Python >= 2.5
     - libmapnik0.6 → libmapnik0.7 because of SONAME bump
   * debian/watch updated to use new url
@@ -33,7 +34,7 @@ mapnik (0.7.0-1) UNRELEASED; urgency=low
   * debian/*.1 moved to debian/manpages/
   * debian/compat bumped to 7
 
- -- David Paleino <dapal@debian.org>  Fri, 19 Feb 2010 23:58:55 +0100
+ -- David Paleino <dapal@debian.org>  Sat, 20 Feb 2010 15:55:42 +0100
 
 mapnik (0.6.1-1) unstable; urgency=low
 
