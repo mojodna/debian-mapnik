@@ -25,9 +25,8 @@ override_dh_auto_build:
 	done
 	dh_auto_build
 
-override_dh_auto_install:
 	install -m 0755 debian/mapnik-plugin-base $(CURDIR)/debian/tmp/usr/bin
-	dh_auto_install
+	dh_install
 
 override_dh_auto_clean:
 	scons --clean $(SCONS_FLAGS)
