@@ -4,5 +4,5 @@ Abstract: This manual describes the Python API provided by Mapnik.
 Section: Programming/Python
 
 Format: HTML
-Index: /usr/share/doc/mapnik-doc/api_docs/python/index.html
-Files: /usr/share/doc/mapnik-doc/api_docs/python/*.html
+Index: /usr/share/doc/mapnik-doc/python/index.html
+Files: /usr/share/doc/mapnik-doc/python/*.html
