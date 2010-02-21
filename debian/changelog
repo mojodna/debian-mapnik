@@ -1,4 +1,4 @@
-mapnik (0.7.0-1) UNRELEASED; urgency=low
+mapnik (0.7.0-1) unstable; urgency=low
 
   [ Dominic Hargreaves ]
   * Change Maintainer to Debian GIS Project (Closes: #551281)
@@ -39,7 +39,7 @@ mapnik (0.7.0-1) UNRELEASED; urgency=low
   * debian/compat bumped to 7
   * debian/copyright updated to be DEP-5-compliant
 
- -- David Paleino <dapal@debian.org>  Sun, 21 Feb 2010 09:26:40 +0100
+ -- David Paleino <dapal@debian.org>  Sun, 21 Feb 2010 10:30:54 +0100
 
 mapnik (0.6.1-1) unstable; urgency=low
 
