@@ -37,7 +37,6 @@ override_dh_prep:
 
 override_dh_install:
 	dh_install
-	find $(CURDIR)/debian/ -name "*.png" | xargs chmod -x
 	find $(CURDIR)/debian/ -name "modserver.py" | xargs chmod -x
 
 override_dh_auto_clean:
@@ -53,6 +52,7 @@ override_dh_auto_clean:
 
 override_dh_installexamples:
 	dh_installexamples -Xdata/new
+	find $(CURDIR)/debian/ -name "*.png" | xargs chmod -x
 
 %:
 #	dh_installexamples -Xdata/new
