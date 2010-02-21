@@ -1,0 +1,21 @@
+From: David Paleino <dapal@debian.org>
+Subject: install the shared library in /usr/lib/ also on amd64
+Forwarded: no
+
+---
+ SConstruct |    4 +---
+ 1 file changed, 1 insertion(+), 3 deletions(-)
+
+--- mapnik.orig/SConstruct
++++ mapnik/SConstruct
+@@ -68,9 +68,7 @@ def shortest_name(libs):
+             name = lib
+     return name
+ 
+-if platform.uname()[4] == 'x86_64' and platform.system() == 'Linux':
+-    LIBDIR_SCHEMA='lib64' 
+-elif platform.uname()[4] == 'ppc64':
++if platform.uname()[4] == 'ppc64':
+     LIBDIR_SCHEMA='lib64'
+ else:
+     LIBDIR_SCHEMA='lib'

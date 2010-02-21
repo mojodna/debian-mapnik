@@ -1,3 +1,4 @@
+00-fix_amd64_libdir.patch
 01-generate_local_docs.patch
 02-fix_FTBFS_binutils-gold.patch
 03-fix_typo.patch

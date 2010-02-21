@@ -1,3 +1,11 @@
+mapnik (0.7.0-2) UNRELEASED; urgency=low
+
+  * debian/patches/:
+    - 00-fix_amd64_libdir.patch added, install the shared library
+      in /usr/lib/ also on amd64.
+
+ -- David Paleino <dapal@debian.org>  Mon, 22 Feb 2010 00:06:15 +0100
+
 mapnik (0.7.0-1) unstable; urgency=low
 
   [ Dominic Hargreaves ]
