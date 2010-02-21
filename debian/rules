@@ -54,7 +54,7 @@ override_dh_auto_clean:
 
 override_dh_installexamples:
 	dh_installexamples -Xdata/new
-	find $(CURDIR)/debian/ -name "*.png" | xargs chmod -x
+	find $(CURDIR)/debian/ -name "*.png" | xargs -r chmod -x
 
 %:
 #	dh_installexamples -Xdata/new
