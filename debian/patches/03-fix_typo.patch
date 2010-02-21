@@ -1,0 +1,23 @@
+From: David Paleino <dapal@debian.org>
+Subject: fix typo in sourcecode, thanks to lintian
+Forwarded: no
+
+---
+ plugins/input/kismet/kismet_datasource.cpp |    4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+--- mapnik.orig/plugins/input/kismet/kismet_datasource.cpp
++++ mapnik/plugins/input/kismet/kismet_datasource.cpp
+@@ -82,10 +82,10 @@ kismet_datasource::kismet_datasource(par
+     //cout << "kismet_datasource::kismet_datasource()" << endl;
+   
+     boost::optional<std::string> host = params.get<std::string>("host");
+-    if (!host) throw datasource_exception("missing <host> paramater");
++    if (!host) throw datasource_exception("missing <host> parameter");
+   
+     boost::optional<std::string> port = params.get<std::string>("port");
+-    if (!port) throw datasource_exception("missing <port> paramater");
++    if (!port) throw datasource_exception("missing <port> parameter");
+   
+     unsigned int portnr = atoi ((*port).c_str () );
+     kismet_thread.reset (new boost::thread (boost::bind (&kismet_datasource::run, this, *host, portnr)));
