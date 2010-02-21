@@ -6,7 +6,7 @@ mapnik (0.7.0-1) UNRELEASED; urgency=low
     public repository
 
   [ David Paleino ]
-  * New upstream release
+  * New upstream release (Closes: #567007)
   * Package converted to 3.0 (quilt) format
   * debian/control:
     - added myself to Uploaders
