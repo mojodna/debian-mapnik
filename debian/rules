@@ -24,12 +24,6 @@ override_dh_auto_build:
 		scons $(SCONS_FLAGS) PYTHON=/usr/bin/$$py ; \
 	done
 
-	# build Python API documentation
-	# and trick epydoc into loading the shlib too
-	-ln -s ../_mapnik.so bindings/python/mapnik/
-	( cd docs/epydoc_config ; ./build_epydoc.sh )
-	rm -rf bindings/python/mapnik/_mapnik.so
-
 	dh_auto_build
 
 override_dh_prep:
@@ -38,6 +32,14 @@ override_dh_prep:
 override_dh_install:
 	dh_install
 	find $(CURDIR)/debian/ -name "modserver.py" | xargs chmod -x
+
+	# build Python API documentation
+	# and trick epydoc into loading the shlib too
+	-ln -s ../_mapnik.so bindings/python/mapnik/
+	( cd docs/epydoc_config ; \
+	LD_LIBRARY_PATH=$(CURDIR)/debian/libmapnik0.7/usr/lib/ ./build_epydoc.sh )
+	rm -rf bindings/python/mapnik/_mapnik.so
+	dh_install -pmapnik-doc docs/api_docs/python /usr/share/doc/mapnik-doc/
 
 override_dh_auto_clean:
 	scons --clean $(SCONS_FLAGS)
