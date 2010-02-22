@@ -1,5 +1,6 @@
 mapnik (0.7.0-2) UNRELEASED; urgency=low
 
+  * Fix various FTBFS (Closes: #570865)
   * debian/patches/:
     - 00-fix_amd64_libdir.patch added, install the shared library
       in /usr/lib/ also on amd64.
