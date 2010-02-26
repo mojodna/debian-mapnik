@@ -6,8 +6,9 @@ mapnik (0.7.0-2) UNRELEASED; urgency=low
       in /usr/lib/ also on amd64.
   * debian/rules:
     - pass -r to xargs when fixing permissions, thanks to KiBi
+    - ignore errors during doc generation
 
- -- David Paleino <dapal@debian.org>  Mon, 22 Feb 2010 00:17:00 +0100
+ -- David Paleino <dapal@debian.org>  Fri, 26 Feb 2010 23:02:46 +0100
 
 mapnik (0.7.0-1) unstable; urgency=low
 
