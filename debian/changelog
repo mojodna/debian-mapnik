@@ -1,4 +1,4 @@
-mapnik (0.7.0-2) UNRELEASED; urgency=low
+mapnik (0.7.0-2) unstable; urgency=low
 
   * Fix various FTBFS (Closes: #570865)
   * debian/patches/:
@@ -8,7 +8,7 @@ mapnik (0.7.0-2) UNRELEASED; urgency=low
     - pass -r to xargs when fixing permissions, thanks to KiBi
     - ignore errors during doc generation
 
- -- David Paleino <dapal@debian.org>  Fri, 26 Feb 2010 23:02:46 +0100
+ -- David Paleino <dapal@debian.org>  Fri, 26 Feb 2010 23:04:32 +0100
 
 mapnik (0.7.0-1) unstable; urgency=low
 
