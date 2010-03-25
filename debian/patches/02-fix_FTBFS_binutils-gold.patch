@@ -4,23 +4,20 @@ Bug-Debian: http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=555586
 Forwarded: no
 
 ---
- utils/shapeindex/SConscript |   10 +---------
- 1 file changed, 1 insertion(+), 9 deletions(-)
+ utils/shapeindex/SConscript |    6 +-----
+ 1 file changed, 1 insertion(+), 5 deletions(-)
 
---- mapnik-new.orig/utils/shapeindex/SConscript
-+++ mapnik-new/utils/shapeindex/SConscript
-@@ -39,16 +39,8 @@ headers = ['#plugins/input/shape'] + env
+--- mapnik.orig/utils/shapeindex/SConscript
++++ mapnik/utils/shapeindex/SConscript
+@@ -39,13 +39,9 @@ headers = ['#plugins/input/shape'] + env
  boost_program_options = 'boost_program_options%s' % env['BOOST_APPEND']
  boost_iostreams  = 'boost_iostreams%s' % env['BOOST_APPEND']
  boost_filesystem = 'boost_filesystem%s' % env['BOOST_APPEND']
 -libraries =  [boost_program_options,boost_iostreams,boost_filesystem]
 -
  boost_system = 'boost_system%s' % env['BOOST_APPEND']
--
--if env['SUNCC']:
--    libraries.append(boost_system)
--
--if env['PLATFORM'] == 'Darwin' and env['BOOST_SYSTEM_REQUIRED']:
+ 
+-if env['HAS_BOOST_SYSTEM']:
 -    libraries.append(boost_system)
 -
 +libraries =  [boost_program_options,boost_iostreams,boost_filesystem,boost_system]

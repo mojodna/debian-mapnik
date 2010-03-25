@@ -4,8 +4,10 @@ mapnik (0.7.1-1) UNRELEASED; urgency=low
   * debian/patches/:
     - 00-fix_amd64_libdir.patch removed, exception for Debian/Ubuntu
       added in upstream code
+    - 02-fix_FTBFS_binutils-gold.patch refreshed to apply to the new
+      code
 
- -- David Paleino <dapal@debian.org>  Thu, 25 Mar 2010 18:55:56 +0100
+ -- David Paleino <dapal@debian.org>  Thu, 25 Mar 2010 18:59:32 +0100
 
 mapnik (0.7.0-2) unstable; urgency=low
 
