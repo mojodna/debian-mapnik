@@ -16,7 +16,7 @@
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
-# $Id: SConstruct 1539 2010-01-11 01:28:42Z dane $
+# $Id: SConstruct 1728 2010-03-18 22:51:14Z dane $
 
 
 import os
@@ -68,7 +68,75 @@ def shortest_name(libs):
             name = lib
     return name
 
-if platform.uname()[4] == 'x86_64' and platform.system() == 'Linux':
+DEFAULT_LINK_PRIORITY = ['internal','other','frameworks','user','system']
+
+def sort_paths(items,priority):
+    """Sort paths such that compiling and linking will globally prefer custom or local libs
+    over system libraries by fixing up the order libs are passed to gcc and the linker.
+    
+    Ideally preference could be by-target instead of global, but our SCons implementation
+    is not currently utilizing different SCons build env()'s as we should.
+    
+    Overally the current approach within these scripts is to prepend paths of preference
+    and append all others, but this does not give enough control (particularly due to the
+    approach of assuming /usr/LIBSCHEMA and letting paths be parsed and added by pkg-config).
+    
+    In effect /usr/lib is likely to come before /usr/local/lib which makes linking against
+    custom built icu or boost impossible when those libraries are available in both places.
+    
+    Sorting using a priority list allows this to be controlled, and fine tuned.
+    """
+    
+    new = []
+    path_types = {'internal':[],'other':[],'frameworks':[],'user':[],'system':[]}
+    # parse types of paths into logical/meaningful groups
+    # based on commonly encountered lib directories on linux and osx
+    for i in items:
+        # internal paths for code kept inside
+        # the mapnik sources
+        if i.startswith('#'):
+            path_types['internal'].append(i)
+        # Mac OS X user installed frameworks
+        elif '/Library/Frameworks' in i:
+            path_types['frameworks'].append(i)
+        # various 'local' installs like /usr/local or /opt/local
+        elif 'local' in i or '/sw' in i:
+            path_types['user'].append(i)
+        # key system libs (likely others will fall into 'other')
+        elif '/usr/' in i or '/System' in i or '/lib' in i:
+            path_types['system'].append(i)
+        # anything not yet matched...
+        # likely a combo of rare system lib paths and
+        # very custom user paths that should ideally be
+        # in 'user'
+        else:
+            path_types['other'].append(i)
+    # build up new list based on priority list
+    for path in priority:
+        if path_types.has_key(path):
+            dirs = path_types[path]
+            new.extend(dirs)
+            path_types.pop(path)
+        else:
+            color_print(1,'\nSorry, "%s" is NOT a valid value for option "LINK_PRIORITY": values include: %s' % (path,','.join(path_types.keys())))
+            color_print(1,'\tinternal: the local directory of the Mapnik sources (prefix #) (eg. used to link internal agg)')
+            color_print(1,'\tframeworks: on osx the /Library/Frameworks directory')
+            color_print(1,'\tuser: any path with "local" or "/sw" inside it')
+            color_print(1,'\tsystem: any path not yet matched with "/usr/","/lib", or "/System" (osx) inside it')
+            color_print(1,'\tother: any paths you specified not matched by criteria used to parse the others')
+            color_print(1,'\tother: any paths you specified not matched by criteria used to parse the others')
+            color_print(1,'The Default priority is: %s' % ','.join(DEFAULT_LINK_PRIORITY))
+            color_print(1,'Any priority groups not listed will be appended to the list at the end')
+            Exit(1)
+    # append remaining paths potentially not requested
+    # by any custom priority list defined by user
+    for k,v in path_types.items():
+        new.extend(v)
+    return new
+
+if platform.dist()[0] in ('Ubuntu','debian'):
+    LIBDIR_SCHEMA='lib'
+elif platform.uname()[4] == 'x86_64' and platform.system() == 'Linux':
     LIBDIR_SCHEMA='lib64' 
 elif platform.uname()[4] == 'ppc64':
     LIBDIR_SCHEMA='lib64'
@@ -110,6 +178,8 @@ def pretty_dep(dep):
 
 # local file to hold custom user configuration variables
 SCONS_LOCAL_CONFIG = 'config.py'
+# build log
+SCONS_LOCAL_LOG = 'config.log'
 # local pickled file to cache configured environment
 SCONS_CONFIGURE_CACHE = 'config.cache'
 # directory SCons uses to stash build tests
@@ -158,6 +228,8 @@ opts.AddVariables(
     ('CONFIG', "The path to the python file in which to save user configuration options. Currently : '%s'" % SCONS_LOCAL_CONFIG,SCONS_LOCAL_CONFIG),
     BoolVariable('USE_CONFIG', "Use SCons user '%s' file (will also write variables after successful configuration)", 'True'),
     BoolVariable('FAST', "Make scons faster at the cost of less precise dependency tracking", 'False'),
+    BoolVariable('PRIORITIZE_LINKING', 'Sort list of lib and inc directories to ensure preferencial compiling and linking (useful when duplicate libs)', 'True'),
+    ('LINK_PRIORITY','Priority list in which to sort library and include paths (default order is internal, other, frameworks, user, then system - see source of `sort_paths` function for more detail)',','.join(DEFAULT_LINK_PRIORITY)),    
     
     # Install Variables
     ('PREFIX', 'The install path "prefix"', '/usr/local'),
@@ -220,6 +292,7 @@ opts.AddVariables(
     BoolVariable('PGSQL2SQLITE', 'Compile and install a utility to convert postgres tables to sqlite', 'False'),
     BoolVariable('COLOR_PRINT', 'Print build status information in color', 'True'),
     )
+    
 # variables to pickle after successful configure step
 # these include all scons core variables as well as custom
 # env variables needed in Sconscript files
@@ -248,7 +321,7 @@ pickle_store = [# Scons internal variables
         'PYTHON_INSTALL_LOCATION',
         'PYTHON_SYS_PREFIX',
         'COLOR_PRINT',
-        'BOOST_SYSTEM_REQUIRED',
+        'HAS_BOOST_SYSTEM',
         ]
 
 # Add all other user configurable options to pickle pickle_store
@@ -301,6 +374,13 @@ if not force_configure:
     else:
         preconfigured = False
 
+# check for missing keys in pickled settings
+# which can occur when keys are added or changed between
+# rebuilds, e.g. for folks following trunk
+for opt in pickle_store:
+    if not opt in env:
+        preconfigured = False
+
 # if custom arguments are supplied make sure to accept them
 if opts.args:
     # since we have custom arguments update environment with all opts to 
@@ -319,6 +399,15 @@ elif preconfigured:
 
 
 #### Custom Configure Checks ###
+
+def prioritize_paths(context):    
+    env = context.env
+    prefs = env['LINK_PRIORITY'].split(',')
+    context.Message( 'Sorting lib and inc compiler paths by priority... %s' % ','.join(prefs) )
+    env['LIBPATH'] = sort_paths(env['LIBPATH'],prefs)
+    env['CPPPATH'] = sort_paths(env['CPPPATH'],prefs)
+    ret = context.Result( True )
+    return ret
 
 def CheckPKGConfig(context, version):
     context.Message( 'Checking for pkg-config... ' )
@@ -561,7 +650,8 @@ int main()
     major_version = version / 100000
     return [major_version,minor_version,patch_level]
 
-conf_tests = { 'CheckPKGConfig' : CheckPKGConfig,
+conf_tests = { 'prioritize_paths' : prioritize_paths,
+               'CheckPKGConfig' : CheckPKGConfig,
                'CheckPKG' : CheckPKG,
                'FindBoost' : FindBoost,
                'CheckBoost' : CheckBoost,
@@ -688,6 +778,18 @@ if not preconfigured:
     else:
         env['SKIPPED_DEPS'].extend(['cairo','cairomm'])
 
+    # allow for mac osx /usr/lib/libicucore.dylib compatibility
+    # requires custom supplied headers since Apple does not include them
+    # details: http://lists.apple.com/archives/xcode-users/2005/Jun/msg00633.html
+    # To use system lib download and make && make install one of these:
+    # http://www.opensource.apple.com/tarballs/ICU/
+    # then copy the headers to a location that mapnik will find
+    if 'core' in env['ICU_LIB_NAME']:
+        env.Append(CXXFLAGS = '-DU_HIDE_DRAFT_API')
+        env.Append(CXXFLAGS = '-DUDISABLE_RENAMING')
+        if os.path.exists(env['ICU_LIB_NAME']):
+            env['ICU_LIB_NAME'] = os.path.basename(env['ICU_LIB_NAME']).replace('.dylib','').replace('lib','')
+
     LIBSHEADERS = [
         ['m', 'math.h', True,'C'],
         ['ltdl', 'ltdl.h', True,'C'],
@@ -699,15 +801,10 @@ if not preconfigured:
         [env['ICU_LIB_NAME'],'unicode/unistr.h',True,'C++'],
     ]
 
-    # allow for mac osx /usr/lib/libicucore.dylib compatibility
-    # requires custom supplied headers since Apple does not include them
-    # details: http://lists.apple.com/archives/xcode-users/2005/Jun/msg00633.html
-    # To use system lib download and make && make install one of these:
-    # http://www.opensource.apple.com/tarballs/ICU/
-    # then copy the headers to a location that mapnik will find
-    if env['ICU_LIB_NAME'] == 'icucore':
-        env.Append(CXXFLAGS = '-DU_HIDE_DRAFT_API')
-        env.Append(CXXFLAGS = '-DUDISABLE_RENAMING')
+
+    # if requested, sort LIBPATH and CPPPATH before running CheckLibWithHeader tests
+    if env['PRIORITIZE_LINKING']:
+        conf.prioritize_paths()    
     
     for libinfo in LIBSHEADERS:
         if not conf.CheckLibWithHeader(libinfo[0], libinfo[1], libinfo[3]):
@@ -725,22 +822,18 @@ if not preconfigured:
         
     conf.FindBoost(BOOST_SEARCH_PREFIXES,thread_flag)
     
-    # get boost version from boost headers rather than previous approach
-    # of fetching from the user provided INCLUDE path
-    boost_system_required = False
+    # boost system is used in boost 1.35 and greater
+    env['HAS_BOOST_SYSTEM'] = False
     boost_lib_version_from_header = conf.GetBoostLibVersion()
     if boost_lib_version_from_header:
         boost_version_from_header = int(boost_lib_version_from_header.split('_')[1])
-        if boost_version_from_header >= 35 and env['PLATFORM'] == 'Darwin':
-            boost_system_required = True
-            env['BOOST_SYSTEM_REQUIRED'] = True
-        else:
-            boost_system_required = False
-            env['BOOST_SYSTEM_REQUIRED'] = False
+        if boost_version_from_header >= 35:
+            env['HAS_BOOST_SYSTEM'] = True
+            
     
     # The other required boost headers.
     BOOST_LIBSHEADERS = [
-        ['system', 'boost/system/system_error.hpp', boost_system_required],
+        ['system', 'boost/system/system_error.hpp', env['HAS_BOOST_SYSTEM']],
         ['filesystem', 'boost/filesystem/operations.hpp', True],
         ['regex', 'boost/regex.hpp', True],
         ['iostreams','boost/iostreams/device/mapped_file.hpp',True],
@@ -803,9 +896,10 @@ if not preconfigured:
 
     # re-append the local paths for mapnik sources to the beginning of the list
     # to make sure they come before any plugins that were 'prepended'
-    env.PrependUnique(CPPPATH = ['#include', '#'], delete_existing=True)
+    env.PrependUnique(CPPPATH = '#include', delete_existing=True)
+    env.PrependUnique(CPPPATH = '#', delete_existing=True)
     env.PrependUnique(LIBPATH = '#src', delete_existing=True)
-    
+
     # Decide which libagg to use
     # if we are using internal agg, then prepend to make sure
     # we link locally
@@ -868,7 +962,7 @@ if not preconfigured:
         # fetch the mapnik version header in order to set the
         # ABI version used to build libmapnik.so on linux in src/SConscript
         abi = conf.GetMapnikLibVersion()
-        abi_fallback = [0,7,0]
+        abi_fallback = [0,7,1]
         if not abi:
             color_print(1,'Problem encountered parsing mapnik version, falling back to %s' % abi_fallback)
             env['ABI_VERSION'] = abi_fallback
@@ -988,6 +1082,11 @@ if not preconfigured:
             color_print(4,'Python %s prefix... %s' % (env['PYTHON_VERSION'], env['PYTHON_SYS_PREFIX']))
             color_print(4,'Python bindings will install in... %s' % os.path.normpath(env['PYTHON_INSTALL_LOCATION']))
 
+
+        # if requested, sort LIBPATH and CPPPATH one last time before saving...
+        if env['PRIORITIZE_LINKING']:
+            conf.prioritize_paths()
+        
         # finish config stage and pickle results
         env = conf.Finish()
         env_cache = open(SCONS_CONFIGURE_CACHE, 'w')
@@ -1010,6 +1109,9 @@ if not preconfigured:
             os.chmod('.sconsign.dblite',0666)
         except: pass
         try:
+            os.chmod(SCONS_LOCAL_LOG,0666)
+        except: pass
+        try:
             for item in glob('%s/*' % SCONF_TEMP_DIR):
                 os.chmod(item,0666)
         except: pass
@@ -1021,6 +1123,9 @@ if not preconfigured:
 
 # autogenerate help on default/current SCons options
 Help(opts.GenerateHelpText(env))
+
+#env.Prepend(CPPPATH = '/usr/local/include')
+#env.Prepend(LIBPATH = '/usr/local/lib')
 
 #### Builds ####
 if not HELP_REQUESTED:

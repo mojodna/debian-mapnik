@@ -74,6 +74,8 @@
 #include <iostream>
 #endif
 
+#include <cmath>
+
 namespace mapnik
 {
    class pattern_source : private boost::noncopyable
@@ -188,7 +190,6 @@ namespace mapnik
       renderer ren(renb);
 
       ras_ptr->reset();
-            
       ras_ptr->gamma(agg::gamma_linear(0.0, sym.get_gamma()));
 
       for (unsigned i=0;i<feature.num_geometries();++i)
@@ -234,7 +235,9 @@ namespace mapnik
       renderer ren(renb);
       agg::scanline_u8 sl;
 
-      ras_ptr->reset();
+      ras_ptr->reset();      
+      ras_ptr->gamma(agg::gamma_linear());
+      
       double height = 0.7071 * sym.height(); // height in meters
 
       for (unsigned i=0;i<feature.num_geometries();++i)
@@ -341,6 +344,7 @@ namespace mapnik
       unsigned a=col.alpha();
       renderer ren(renb);
       ras_ptr->reset();
+      ras_ptr->gamma(agg::gamma_linear());
       agg::scanline_p8 sl;
 
       for (unsigned i=0;i<feature.num_geometries();++i)
@@ -568,7 +572,7 @@ namespace mapnik
                             if ( sym.get_allow_overlap() || detector_.has_placement(label_ext) )
                             {
                                 //pixmap_.set_rectangle_alpha(px,py,*data);
-                                pixmap_.set_rectangle_alpha2(*data,px,py,sym.get_opacity());
+                                pixmap_.set_rectangle_alpha2(*data,px,py,float(sym.get_opacity()));
                                 Envelope<double> dim = ren.prepare_glyphs(&text_placement.placements[0]);
                                 ren.render(x,y);
                                 detector_.insert(label_ext);
@@ -669,6 +673,7 @@ namespace mapnik
 
       agg::scanline_u8 sl;
       ras_ptr->reset();
+      ras_ptr->gamma(agg::gamma_linear());
 
       ImageData32 const& pattern =  * sym.get_image();
       unsigned w=pattern.width();
@@ -711,50 +716,60 @@ namespace mapnik
       if (raster)
       {
          Envelope<double> ext=t_.forward(raster->ext_);
-         ImageData32 target(int(ceil(ext.width())),int(ceil(ext.height())));
-         int start_x = int(ext.minx()+0.5);
-         int start_y = int(ext.miny()+0.5);
+         int start_x = rint(ext.minx());
+         int start_y = rint(ext.miny());
+         int raster_width = rint(ext.width());
+         int raster_height = rint(ext.height());
+         int end_x = start_x + raster_width;
+         int end_y = start_y + raster_height;
+         double err_offs_x = (ext.minx()-start_x + ext.maxx()-end_x)/2;
+         double err_offs_y = (ext.miny()-start_y + ext.maxy()-end_y)/2;
+         
+         if (raster_width > 0 && raster_height > 0)
+         {
+            ImageData32 target(raster_width,raster_height);
 
-         if (sym.get_scaling() == "fast") {
-            scale_image<ImageData32>(target,raster->data_);
-         } else if (sym.get_scaling() == "bilinear"){
-            scale_image_bilinear<ImageData32>(target,raster->data_);
-         } else if (sym.get_scaling() == "bilinear8"){
-            scale_image_bilinear8<ImageData32>(target,raster->data_);
-         } else {
-            scale_image<ImageData32>(target,raster->data_);
-         }
+            if (sym.get_scaling() == "fast") {
+               scale_image<ImageData32>(target,raster->data_);
+            } else if (sym.get_scaling() == "bilinear"){
+               scale_image_bilinear<ImageData32>(target,raster->data_, err_offs_x, err_offs_y);
+            } else if (sym.get_scaling() == "bilinear8"){
+               scale_image_bilinear8<ImageData32>(target,raster->data_, err_offs_x, err_offs_y);
+            } else {
+               scale_image<ImageData32>(target,raster->data_);
+            }
 
-         if (sym.get_mode() == "normal"){
-             if (sym.get_opacity() == 1.0) {
-                pixmap_.set_rectangle(start_x,start_y,target);
-             } else {
-                pixmap_.set_rectangle_alpha2(target,start_x,start_y, sym.get_opacity());
-             }
-         } else if (sym.get_mode() == "grain_merge"){
-            pixmap_.template merge_rectangle<MergeGrain> (target,start_x,start_y, sym.get_opacity());
-         } else if (sym.get_mode() == "grain_merge2"){
-            pixmap_.template merge_rectangle<MergeGrain2> (target,start_x,start_y, sym.get_opacity());
-         } else if (sym.get_mode() == "multiply"){
-            pixmap_.template merge_rectangle<Multiply> (target,start_x,start_y, sym.get_opacity());
-         } else if (sym.get_mode() == "multiply2"){
-            pixmap_.template merge_rectangle<Multiply2> (target,start_x,start_y, sym.get_opacity());
-         } else if (sym.get_mode() == "divide"){
-            pixmap_.template merge_rectangle<Divide> (target,start_x,start_y, sym.get_opacity());
-         } else if (sym.get_mode() == "divide2"){
-            pixmap_.template merge_rectangle<Divide2> (target,start_x,start_y, sym.get_opacity());
-         } else if (sym.get_mode() == "screen"){
-            pixmap_.template merge_rectangle<Screen> (target,start_x,start_y, sym.get_opacity());
-         } else if (sym.get_mode() == "hard_light"){
-            pixmap_.template merge_rectangle<HardLight> (target,start_x,start_y, sym.get_opacity());
-         } else {
-             if (sym.get_opacity() == 1.0){
-                 pixmap_.set_rectangle(start_x,start_y,target);
-             } else {
-                pixmap_.set_rectangle_alpha2(target,start_x,start_y, sym.get_opacity());
-             }
+            if (sym.get_mode() == "normal"){
+                if (sym.get_opacity() == 1.0) {
+                   pixmap_.set_rectangle(start_x,start_y,target);
+                } else {
+                   pixmap_.set_rectangle_alpha2(target,start_x,start_y, sym.get_opacity());
+                }
+            } else if (sym.get_mode() == "grain_merge"){
+               pixmap_.template merge_rectangle<MergeGrain> (target,start_x,start_y, sym.get_opacity());
+            } else if (sym.get_mode() == "grain_merge2"){
+               pixmap_.template merge_rectangle<MergeGrain2> (target,start_x,start_y, sym.get_opacity());
+            } else if (sym.get_mode() == "multiply"){
+               pixmap_.template merge_rectangle<Multiply> (target,start_x,start_y, sym.get_opacity());
+            } else if (sym.get_mode() == "multiply2"){
+               pixmap_.template merge_rectangle<Multiply2> (target,start_x,start_y, sym.get_opacity());
+            } else if (sym.get_mode() == "divide"){
+               pixmap_.template merge_rectangle<Divide> (target,start_x,start_y, sym.get_opacity());
+            } else if (sym.get_mode() == "divide2"){
+               pixmap_.template merge_rectangle<Divide2> (target,start_x,start_y, sym.get_opacity());
+            } else if (sym.get_mode() == "screen"){
+               pixmap_.template merge_rectangle<Screen> (target,start_x,start_y, sym.get_opacity());
+            } else if (sym.get_mode() == "hard_light"){
+               pixmap_.template merge_rectangle<HardLight> (target,start_x,start_y, sym.get_opacity());
+            } else {
+                if (sym.get_opacity() == 1.0){
+                    pixmap_.set_rectangle(start_x,start_y,target);
+                } else {
+                   pixmap_.set_rectangle_alpha2(target,start_x,start_y, sym.get_opacity());
+                }
+            }
+            // TODO: other modes? (add,diff,sub,...)
          }
-         // TODO: other modes? (add,diff,sub,...)
       }
    }
 
@@ -768,6 +783,7 @@ namespace mapnik
       typedef agg::renderer_scanline_aa_solid<ren_base> renderer;
       arrow arrow_;
       ras_ptr->reset();
+      ras_ptr->gamma(agg::gamma_linear());
 
       agg::scanline_u8 sl;
       agg::rendering_buffer buf(pixmap_.raw_data(),width_,height_, width_ * 4);

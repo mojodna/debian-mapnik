@@ -12,6 +12,46 @@ For a complete change history, see the SVN log.
 
 
 
+Mapnik 0.7.1 Release
+--------------------
+
+(Packaged from r1745)
+
+- Rasters: Various fixes and improvements to 8bit png output (#522,#475)
+
+- XML: Save map buffer_size when serializing map.
+
+- SCons: Added new build options 'PRIORITIZE_LINKING' and 'LINK_PRIORITY'. The first is a boolean (default True)
+  of whether to use the new sorting implementation that gives explcit preference to custom or local paths
+  during compile and linking that will affect builds when duplicate libraries and include directories are on the
+  system. LINK_PRIORITY defaults to prioritizing internal sources of the mapnik source folder, then local/user 
+  installed libraries over system libraries, but the option can be customized. Sorting not only ensures that 
+  compiling and linking will more likely match the desired libraries but also gives more likelyhood to avoid 
+  the scenario where libraries are linked that don't match the includes libmapnik compiled against.
+
+- XML: Fixed behavior of PolygonPatternSymbolizer and LinePatternSymbolizer whereby width, height,
+  and type of images is actually allowed to be optionally ommitted (#508). This was added in r1543 but
+  only worked correctly for PointSymbolizer and ShieldSymbolizer. 
+
+- Fixed reading of PostGIS data on Big Endian systems (#515)
+
+- PostGIS: Added better support for alterative schemas (#500)
+
+- AGG Renderer - Enforced default gamma function on all symbolizers to ensure proper antialiasing
+  even when gamma is modified on the PolygonSymbolizer. (#512)
+
+- PNG: fixed png256 for large images and some improvements to reduce color corruptions (#522)
+
+- PNG: Added new quantization method for indexed png format using hextree with full support for alpha
+  channel. Also new method has some optimizations for color gradients common when using elevation based
+  rasters. By default old method using octree is used. (r1680, r1683, #477)
+
+- PNG: Added initial support for passing options to png writter like number of colors, transparency
+  support, quantization method and possibly other in future using type parameter. For example
+  "png8:c=128:t=1:m=h" limits palette to 128 colors, uses only binary transparency (0 - none,
+  1 - binary, 2 - full), and new method of quantization using hextree (h - hextree, o - octree).
+  Existing type "png256" can be also written using "png8:c=256:m=o:t=2"  (r1680, r1683, #477)
+
 Mapnik 0.7.0 Release
 --------------------
 
@@ -23,7 +63,7 @@ Mapnik 0.7.0 Release
 
 - Gdal Plugin: Added support for Gdal overviews, enabling fast loading of > 1GB rasters (#54)
 
-    * Use the gdal_addo tools to add overviews to existing GDAL datasets
+    * Use the gdaladdo utility to add overviews to existing GDAL datasets
 
 - PostGIS: Added an optional 'geometry_table' parameter. The 'geometry_table' used by Mapnik to look up 
   metadata in the geometry_columns and calculate extents (when the 'geometry_field' and 'srid' parameters
@@ -79,7 +119,7 @@ Mapnik 0.7.0 Release
 
 - PNG: Fixed problem with garbled/striped png256 output along sharpe edges(#416,#445,#447,#202)
 
-- PNG: Added support for semitransparency in png256 outpuy (#477,#202)
+- PNG: Added support for semitransparency in png256 output (#477,#202)
 
 - PolygonSymbolizer: Added 'gamma' attribute to allow for dilation of polygon edges - a solution
   to gap artifacts or "ghost lines" between adjacent polygons and allows for slight sharpening of
@@ -88,14 +128,14 @@ Mapnik 0.7.0 Release
 - TextSymbolizer: Large set of new attributes: 'text_convert', 'line_spacing', 'character_spacing', 
   'wrap_character', 'wrap_before', 'horizontal_alignment', 'justify_alignment', and 'opacity'.
 
-    * More details at changsets: r1254 and r1341
+    * More details at changesets: r1254 and r1341
 
 - SheildSymbolizer: Added special new attributes: 'unlock_image', 'VERTEX' placement, 'no_text' and many
   attributes previously only supported in the TextSymbolizer: 'allow_overlap', 'vertical_alignment', 
   'horizontal_alignment', 'justify_alignment', 'wrap_width', 'wrap_character', 'wrap_before', 'text_convert',
   'line_spacing', 'character_spacing', and 'opacity'.
 
-    * More details at changset r1341
+    * More details at changeset r1341
 
 - XML: Added support for using CDATA with libxml2 parser (r1364)
 
@@ -114,6 +154,8 @@ Mapnik 0.7.0 Release
 - XML: Ensured that default values for layers are not serialized in save_map() (r1366)
 
 - XML: Added missing serialization of PointSymbolizer 'opacity' and 'allow_overlap' attributes (r1358)
+
+- XML: Default text vertical_alignment now dependent on dy (#485, r1527)
 
 - Python: Exposed ability to write to Cairo formats using 'mapnik.render_to_file()' and without pycairo (#381)
 
@@ -142,7 +184,7 @@ Mapnik 0.7.0 Release
 
 - SCons: Improved reliability of python linking on OSX (#380)
 
-- Fonts: Added unifont to auto-installed fonts (r1328)
+- Fonts: Added unifont to auto-installed fonts, which is used by the OSM styles as a fallback font (r1328)
 
 
 

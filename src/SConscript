@@ -49,7 +49,7 @@ if env['THREADING'] == 'multi':
     libraries.append('boost_thread%s' % env['BOOST_APPEND'])
         
 if env['PLATFORM'] == 'Darwin':
-    if env['BOOST_SYSTEM_REQUIRED']:
+    if env['HAS_BOOST_SYSTEM']:
         libraries.append('boost_system%s' % env['BOOST_APPEND'])
     
 if env['INTERNAL_LIBAGG']:
@@ -64,7 +64,7 @@ if env['PLATFORM'] == 'Darwin':
     else:
         lib_path = 'libmapnik.dylib'
     linkflags = '-Wl,-install_name,%s' % lib_path
-    linkflags += ' -current_version 0.7.0 -compatibility_version 0.7.0'
+    linkflags += ' -current_version 0.7.1 -compatibility_version 0.7.1'
 elif env['PLATFORM'] == 'SunOS' and env['CXX'].startswith('CC'):
     linkflags = '-R. -h libmapnik.so'
 else: # Linux and others
