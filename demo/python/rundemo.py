@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# $Id: rundemo.py 1542 2010-01-11 02:16:01Z dane $
+# $Id: rundemo.py 1692 2010-03-12 18:28:20Z dane $
 #
 # This file is part of Mapnik (c++ mapping toolkit)
 # Copyright (C) 2005 Jean-Francois Doyon
@@ -328,10 +328,20 @@ mapnik.render(m, im)
 images_ = []
 im.save('demo.png', 'png') # true-colour RGBA
 images_.append('demo.png')
-im.save('demo256.png', 'png256') # save to palette based (max 256 colours) png 
+
+# old behavior, now can do 'png8:c=256'
+im.save('demo256.png', 'png256') # save to palette based (max 256 colours) png
 images_.append('demo256.png')
+
+im.save('demo64_binary_transparency.png', 'png8:c=64:t=1')
+images_.append('demo64_binary_transparency.png')
+
+im.save('demo128_colors_hextree_no_alpha.png', 'png8:c=100:m=h:t=0')
+images_.append('demo128_colors_hextree_no_alpha.png')
+
 im.save('demo_high.jpg', 'jpeg100')
 images_.append('demo_high.jpg')
+
 im.save('demo_low.jpg', 'jpeg50')
 images_.append('demo_low.jpg')
 
