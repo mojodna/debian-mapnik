@@ -1,3 +1,9 @@
+mapnik (0.7.1-1) UNRELEASED; urgency=low
+
+  * New upstream version
+
+ -- David Paleino <dapal@debian.org>  Thu, 25 Mar 2010 18:48:55 +0100
+
 mapnik (0.7.0-2) unstable; urgency=low
 
   * Fix various FTBFS (Closes: #570865)
