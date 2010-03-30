@@ -1,4 +1,4 @@
-mapnik (0.7.1-1) UNRELEASED; urgency=low
+mapnik (0.7.1-1) unstable; urgency=low
 
   * New upstream version
   * debian/patches/:
@@ -8,7 +8,7 @@ mapnik (0.7.1-1) UNRELEASED; urgency=low
       code
     - 03-fix_typo.patch removed, merged upstream
 
- -- David Paleino <dapal@debian.org>  Thu, 25 Mar 2010 19:00:09 +0100
+ -- David Paleino <dapal@debian.org>  Tue, 30 Mar 2010 07:28:55 +0200
 
 mapnik (0.7.0-2) unstable; urgency=low
 
