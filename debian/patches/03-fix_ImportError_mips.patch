@@ -1,0 +1,21 @@
+From: Jakub Wilk <jwilk@debian.org>
+Subject: fix import, so that it really works without guessing the values
+Origin: vendor
+Bug-Debian: http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=599330
+Forwarded: no
+
+---
+ bindings/python/mapnik/__init__.py |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+--- mapnik.orig/bindings/python/mapnik/__init__.py
++++ mapnik/bindings/python/mapnik/__init__.py
+@@ -42,7 +42,7 @@ import os
+ 
+ from sys import getdlopenflags, setdlopenflags
+ try:
+-    from ctypes import RTLD_NOW, RTLD_GLOBAL
++    from DLFCN import RTLD_NOW, RTLD_GLOBAL
+ except ImportError:
+     RTLD_NOW = 2
+     RTLD_GLOBAL = 256
