@@ -1,10 +1,10 @@
-mapnik (0.7.1-2) UNRELEASED; urgency=low
+mapnik (0.7.1-2) unstable; urgency=low
 
   * debian/patches/03-fix_ImportError_mips.patch added, fixes
     un-importability on mips{,-el} due to a wrong import. Thanks
     Jakub Wilk (Closes: #599330)
 
- -- David Paleino <dapal@debian.org>  Sat, 09 Oct 2010 16:24:00 +0200
+ -- David Paleino <dapal@debian.org>  Sat, 09 Oct 2010 16:25:18 +0200
 
 mapnik (0.7.1-1) unstable; urgency=low
 
