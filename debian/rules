@@ -5,7 +5,12 @@
 #export DH_VERBOSE=1
 
 # scons flags
-SCONS_FLAGS=INPUT_PLUGINS=raster,sqlite,postgis,ogr,shape,osm,gdal,kismet PROJ_INCLUDES=/usr/include PROJ_LIBS=/usr/lib INTERNAL_LIBAGG=no SYSTEM_FONTS=/usr/share/fonts/truetype/ttf-dejavu XMLPARSER=libxml2 DESTDIR=$(CURDIR)/debian/tmp PREFIX=/usr LIB_DIR_NAME=/mapnik/0.7
+SCONS_FLAGS := INPUT_PLUGINS=raster,sqlite,postgis,ogr,shape,osm,gdal,kismet
+SCONS_FLAGS += PROJ_INCLUDES=/usr/include PROJ_LIBS=/usr/lib
+SCONS_FLAGS += SYSTEM_FONTS=/usr/share/fonts/truetype/ttf-dejavu
+SCONS_FLAGS += XMLPARSER=libxml2
+SCONS_FLAGS += DESTDIR=$(CURDIR)/debian/tmp
+SCONS_FLAGS += PREFIX=/usr LIB_DIR_NAME=/mapnik/0.7
 
 CFLAGS = -Wall -g
 

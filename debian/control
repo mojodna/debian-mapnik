@@ -26,7 +26,6 @@ Build-Depends:
  libfribidi-dev,
  libgdal1-dev,
  libxml2-dev,
- libagg-dev,
  libicu-dev,
  libcairo2-dev,
  libcairomm-1.0-dev,
