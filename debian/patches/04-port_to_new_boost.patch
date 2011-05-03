@@ -1,0 +1,99 @@
+From: Dane Springmeyer <dbsgeo@gmail.com>
+Origin: upstream, http://trac.mapnik.org/changeset/2506/branches/0.7.2-dev
+Bug-Debian: http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=624934
+Forwarded: not-needed
+
+---
+ src/datasource_cache.cpp |   28 +++++++++++++++++++++-------
+ src/load_map.cpp         |    5 +++++
+ 2 files changed, 26 insertions(+), 7 deletions(-)
+
+--- mapnik.orig/src/datasource_cache.cpp
++++ mapnik/src/datasource_cache.cpp
+@@ -40,8 +40,8 @@
+ 
+ namespace mapnik
+ {
+-   using namespace std;
+-   using namespace boost;
++// using namespace std;
++// using namespace boost;
+    
+    bool is_input_plugin (std::string const& filename)
+    {
+@@ -72,7 +72,7 @@ namespace mapnik
+        }
+ 
+        datasource_ptr ds;
+-       map<string,boost::shared_ptr<PluginInfo> >::iterator itr=plugins_.find(*type);
++       std::map<string,boost::shared_ptr<PluginInfo> >::iterator itr=plugins_.find(*type);
+        if ( itr == plugins_.end() )
+        {
+            throw config_error(string("Could not create datasource. No plugin ") +
+@@ -131,25 +131,33 @@ namespace mapnik
+       mutex::scoped_lock lock(mapnik::singleton<mapnik::datasource_cache, 
+                               mapnik::CreateStatic>::mutex_);
+ #endif
+-      filesystem::path path(str);
+-      filesystem::directory_iterator end_itr;
++      boost::filesystem::path path(str);
++      boost::filesystem::directory_iterator end_itr;
+  
+ 
+       if (exists(path) && is_directory(path))
+       {
+-         for (filesystem::directory_iterator itr(path);itr!=end_itr;++itr )
++         for (boost::filesystem::directory_iterator itr(path);itr!=end_itr;++itr )
+          {
+ 
+ #if BOOST_VERSION < 103400 
+             if (!is_directory( *itr )  && is_input_plugin(itr->leaf()))      
+ #else
++#if (BOOST_FILESYSTEM_VERSION == 3)
++            if (!is_directory( *itr )  && is_input_plugin(itr->path().filename().string()))
++#else // v2
+             if (!is_directory( *itr )  && is_input_plugin(itr->path().leaf()))   
+ #endif
++#endif
+ 
+             {
+                try 
+                {
++#if (BOOST_FILESYSTEM_VERSION == 3)
++                  lt_dlhandle module = lt_dlopen(itr->path().string().c_str());
++#else // v2
+                   lt_dlhandle module=lt_dlopen(itr->string().c_str());
++#endif
+                   if (module)
+                   {
+                      datasource_name* ds_name = 
+@@ -164,7 +172,13 @@ namespace mapnik
+                   }
+                   else
+                   {
+-                     std::clog << "Problem loading plugin library: " << itr->string().c_str() << " (libtool error: " << lt_dlerror() << ")" << std::endl;
++#if (BOOST_FILESYSTEM_VERSION == 3)
++                     std::clog << "Problem loading plugin library: " << itr->path().string()
++                               << " (dlopen failed - plugin likely has an unsatisfied dependency or incompatible ABI)" << std::endl;
++#else // v2
++                     std::clog << "Problem loading plugin library: " << itr->string()
++                               << " (dlopen failed - plugin likely has an unsatisfied dependency or incompatible ABI)" << std::endl;
++#endif
+                   }
+                }
+                catch (...) {}
+--- mapnik.orig/src/load_map.cpp
++++ mapnik/src/load_map.cpp
+@@ -1590,7 +1590,12 @@ std::string map_parser::ensure_relative_
+     boost::filesystem::path xml_path = filename_;
+     boost::filesystem::path rel_path = *opt_path;
+     if ( !rel_path.has_root_path() ) {
++#if (BOOST_FILESYSTEM_VERSION == 3)
++	boost::filesystem::path full = boost::filesystem::absolute(xml_path.branch_path()/rel_path).normalize();
++#else // v2
+ 	boost::filesystem::path full = boost::filesystem::complete(xml_path.branch_path()/rel_path).normalize();
++#endif
++
+ #ifdef MAPNIK_DEBUG
+ 	std::clog << "\nModifying relative paths to be relative to xml...\n";
+ 	std::clog << "original base path: " << *opt_path << "\n";
