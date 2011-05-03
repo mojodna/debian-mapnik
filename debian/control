@@ -34,7 +34,7 @@ Build-Depends:
  libcurl4-gnutls-dev,
  libsigc++-2.0-dev,
  python-epydoc
-Standards-Version: 3.8.4
+Standards-Version: 3.9.2
 Section: libs
 XS-Python-Version: >= 2.5
 Homepage: http://www.mapnik.org/
