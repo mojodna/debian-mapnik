@@ -25,6 +25,7 @@ override_dh_auto_configure:
 	dh_auto_configure
 
 override_dh_auto_build:
+	set -e; \
 	for py in $(shell pyversions -r); do \
 		scons $(SCONS_FLAGS) PYTHON=/usr/bin/$$py ; \
 	done
