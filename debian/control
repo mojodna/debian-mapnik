@@ -1,39 +1,40 @@
 Source: mapnik
 Priority: optional
 Maintainer: Debian GIS Project <pkg-grass-devel@lists.alioth.debian.org>
-Uploaders: Debian OpenStreetMap Team <pkg-osm-maint@lists.alioth.debian.org>,
- David Paleino <dapal@debian.org>, Francesco Paolo Lovergine <frankie@debian.org>
+Uploaders: Debian OpenStreetMap Team <pkg-osm-maint@lists.alioth.debian.org>
+ , David Paleino <dapal@debian.org>
+ , Francesco Paolo Lovergine <frankie@debian.org>
 Build-Depends:
- scons,
- python-support (>= 0.90.0~),
- debhelper (>= 8~),
- python-all-dev,
- libboost-thread-dev,
- libboost-filesystem-dev,
- libboost-regex-dev,
- libboost-python-dev,
- libboost-system-dev,
- libboost-iostreams-dev,
- libboost-program-options-dev,
- libpng12-dev,
- libjpeg-dev,
- libtiff4-dev,
- zlib1g-dev,
- libfreetype6-dev,
- libpq-dev,
- libproj-dev,
- libltdl-dev,
- libfribidi-dev,
- libgdal1-dev,
- libxml2-dev,
- libicu-dev,
- libcairo2-dev,
- libcairomm-1.0-dev,
- python-cairo-dev,
- libsqlite3-dev,
- libcurl4-gnutls-dev,
- libsigc++-2.0-dev,
- python-epydoc
+ scons
+ , python-support (>= 0.90.0~)
+ , debhelper (>= 8~)
+ , python-all-dev
+ , libboost-thread-dev
+ , libboost-filesystem-dev
+ , libboost-regex-dev
+ , libboost-python-dev
+ , libboost-system-dev
+ , libboost-iostreams-dev
+ , libboost-program-options-dev
+ , libpng12-dev
+ , libjpeg-dev
+ , libtiff4-dev
+ , zlib1g-dev
+ , libfreetype6-dev
+ , libpq-dev
+ , libproj-dev
+ , libltdl-dev
+ , libfribidi-dev
+ , libgdal1-dev
+ , libxml2-dev
+ , libicu-dev
+ , libcairo2-dev
+ , libcairomm-1.0-dev
+ , python-cairo-dev
+ , libsqlite3-dev
+ , libcurl4-gnutls-dev
+ , libsigc++-2.0-dev
+ , python-epydoc
 Standards-Version: 3.9.2
 Section: libs
 XS-Python-Version: >= 2.5
@@ -44,9 +45,9 @@ Vcs-Browser: http://git.debian.org/?p=pkg-grass/mapnik.git
 Package: libmapnik0.7
 Architecture: any
 Depends:
- ${shlibs:Depends},
- ${misc:Depends},
- ttf-dejavu
+ ${shlibs:Depends}
+ , ${misc:Depends}
+ , ttf-dejavu
 Suggests: postgis
 Description: C++/Python toolkit for developing GIS applications (libraries)
  Mapnik is an OpenSource C++/Python toolkit for developing GIS
@@ -67,34 +68,34 @@ Package: libmapnik-dev
 Section: libdevel
 Architecture: any
 Depends:
- ${misc:Depends},
- libmapnik0.7 (= ${binary:Version}),
- libc6-dev | libc-dev,
- libboost-thread-dev,
- libboost-filesystem-dev,
- libboost-regex-dev,
- libboost-python-dev,
- libboost-system-dev,
- libboost-iostreams-dev,
- libpng12-dev,
- libjpeg-dev,
- libtiff4-dev,
- zlib1g-dev,
- libfreetype6-dev,
- libpq-dev,
- libproj-dev,
- libltdl-dev,
- libfribidi-dev,
- libgdal1-dev,
- libxml2-dev,
- libagg-dev,
- libicu-dev,
- libcairo2-dev,
- libcairomm-1.0-dev,
- python-cairo-dev,
- libsqlite3-dev,
- libcurl4-gnutls-dev,
- libsigc++-2.0-dev
+ ${misc:Depends}
+ , libmapnik0.7 (= ${binary:Version})
+ , libc6-dev | libc-dev
+ , libboost-thread-dev
+ , libboost-filesystem-dev
+ , libboost-regex-dev
+ , libboost-python-dev
+ , libboost-system-dev
+ , libboost-iostreams-dev
+ , libpng12-dev
+ , libjpeg-dev
+ , libtiff4-dev
+ , zlib1g-dev
+ , libfreetype6-dev
+ , libpq-dev
+ , libproj-dev
+ , libltdl-dev
+ , libfribidi-dev
+ , libgdal1-dev
+ , libxml2-dev
+ , libagg-dev
+ , libicu-dev
+ , libcairo2-dev
+ , libcairomm-1.0-dev
+ , python-cairo-dev
+ , libsqlite3-dev
+ , libcurl4-gnutls-dev
+ , libsigc++-2.0-dev
 Recommends: mapnik-doc
 Description: C++/Python toolkit for developing GIS applications (devel)
  Mapnik is an OpenSource C++/Python toolkit for developing GIS
@@ -116,8 +117,8 @@ Package: mapnik-utils
 Section: utils
 Architecture: any
 Depends:
- ${shlibs:Depends},
- ${misc:Depends}
+ ${shlibs:Depends}
+ , ${misc:Depends}
 Description: C++/Python toolkit for developing GIS applications (utilities)
  Mapnik is an OpenSource C++/Python toolkit for developing GIS
  (Geographic Information Systems) applications. At the core is a C++
@@ -139,10 +140,10 @@ Package: python-mapnik
 Section: python
 Architecture: any
 Depends:
- ${shlibs:Depends},
- ${misc:Depends},
- ${python:Depends},
- python-cairo
+ ${shlibs:Depends}
+ , ${misc:Depends}
+ , ${python:Depends}
+ , python-cairo
 Provides: ${python:Provides}
 XB-Python-Version: ${python:Versions}
 Description: C++/Python toolkit for developing GIS applications (Python)
