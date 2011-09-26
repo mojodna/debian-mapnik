@@ -6,10 +6,9 @@ Uploaders: Debian OpenStreetMap Team <pkg-osm-maint@lists.alioth.debian.org>
  , Francesco Paolo Lovergine <frankie@debian.org>
 Build-Depends:
  scons
-# , python-support (>= 0.90.0~)
  , debhelper (>= 8~)
  , libtool
- , python-all-dev
+ , python-all-dev (>= 2.6.6-3~)
  , libboost-thread-dev
  , libboost-filesystem-dev
  , libboost-regex-dev
@@ -41,7 +40,7 @@ Build-Depends:
  , pkg-config
 Standards-Version: 3.9.2
 Section: libs
-XS-Python-Version: >= 2.5
+X-Python-Version: >= 2.5
 Homepage: http://www.mapnik.org/
 Vcs-Git: git://git.debian.org/pkg-grass/mapnik.git
 Vcs-Browser: http://git.debian.org/?p=pkg-grass/mapnik.git
@@ -149,7 +148,6 @@ Depends:
  , ${python:Depends}
  , python-cairo
 Provides: ${python:Provides}
-XB-Python-Version: ${python:Versions}
 Description: C++/Python toolkit for developing GIS applications (Python)
  Mapnik is an OpenSource C++/Python toolkit for developing GIS
  (Geographic Information Systems) applications. At the core is a C++
