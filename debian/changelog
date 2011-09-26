@@ -2,8 +2,9 @@ mapnik (2.0.0-1) UNRELEASED; urgency=low
 
   * New upstream version
   * Debhelper compatibility bumped to 8
+  * New input plugins compiled: geos, rasterlite
 
- -- David Paleino <dapal@debian.org>  Mon, 26 Sep 2011 22:27:53 +0200
+ -- David Paleino <dapal@debian.org>  Mon, 26 Sep 2011 23:49:50 +0200
 
 mapnik (0.7.1-6) unstable; urgency=low
 
