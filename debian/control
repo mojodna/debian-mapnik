@@ -6,7 +6,7 @@ Uploaders: Debian OpenStreetMap Team <pkg-osm-maint@lists.alioth.debian.org>,
 Build-Depends:
  scons,
  python-support (>= 0.90.0~),
- debhelper (>= 7.0.50~),
+ debhelper (>= 8~),
  python-all-dev,
  libboost-thread-dev,
  libboost-filesystem-dev,
