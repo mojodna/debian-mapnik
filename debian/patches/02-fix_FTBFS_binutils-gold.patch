@@ -4,23 +4,29 @@ Bug-Debian: http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=555586
 Forwarded: no
 
 ---
- utils/shapeindex/SConscript |    6 +-----
- 1 file changed, 1 insertion(+), 5 deletions(-)
+ utils/shapeindex/build.py |    7 ++-----
+ 1 file changed, 2 insertions(+), 5 deletions(-)
 
---- mapnik.orig/utils/shapeindex/SConscript
-+++ mapnik/utils/shapeindex/SConscript
-@@ -39,13 +39,9 @@ headers = ['#plugins/input/shape'] + env
+--- mapnik.orig/utils/shapeindex/build.py
++++ mapnik/utils/shapeindex/build.py
+@@ -38,12 +38,9 @@ headers = ['#plugins/input/shape'] + env
+ 
  boost_program_options = 'boost_program_options%s' % env['BOOST_APPEND']
- boost_iostreams  = 'boost_iostreams%s' % env['BOOST_APPEND']
  boost_filesystem = 'boost_filesystem%s' % env['BOOST_APPEND']
--libraries =  [boost_program_options,boost_iostreams,boost_filesystem]
+-libraries =  [boost_program_options, boost_filesystem]
 -
  boost_system = 'boost_system%s' % env['BOOST_APPEND']
  
 -if env['HAS_BOOST_SYSTEM']:
 -    libraries.append(boost_system)
--
-+libraries =  [boost_program_options,boost_iostreams,boost_filesystem,boost_system]
++libraries =  [boost_program_options, boost_filesystem, boost_system]
  
- shapeindex = env.Program('shapeindex', source, CPPPATH=headers, LIBS=libraries)
+ shapeindex = program_env.Program('shapeindex', source, CPPPATH=headers, LIBS=libraries, LINKFLAGS=env['CUSTOM_LDFLAGS'])
  
+@@ -53,4 +50,4 @@ if 'uninstall' not in COMMAND_LINE_TARGE
+     env.Install(os.path.join(env['INSTALL_PREFIX'],'bin'), shapeindex)
+     env.Alias('install', os.path.join(env['INSTALL_PREFIX'],'bin'))
+ 
+-env['create_uninstall_target'](env, os.path.join(env['INSTALL_PREFIX'],'bin','shapeindex'))
+\ No newline at end of file
++env['create_uninstall_target'](env, os.path.join(env['INSTALL_PREFIX'],'bin','shapeindex'))
