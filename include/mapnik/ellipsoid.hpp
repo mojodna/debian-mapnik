@@ -22,10 +22,15 @@
 
 //$Id$
 
+#ifndef MAPNIK_ELLIPSOID_HPP
+#define MAPNIK_ELLIPSOID_HPP
+
 namespace mapnik {
-    struct ellipsoid
-    {
-        double a; // semi mayor axis  
-        double b; // semi minor axis
-    };
+struct ellipsoid
+{
+    double a; // semi mayor axis  
+    double b; // semi minor axis
+};
 }
+
+#endif // MAPNIK_ELLIPSOID_HPP

@@ -35,16 +35,14 @@
 #include "spatial_classesm.h"
 
 // check for oracle support
-#if OCCI_MAJOR_VERSION == 10 && OCCI_MINOR_VERSION >= 1
-  //     Only ORACLE 10g (>= 10.2.0.X) is supported !
+#if OCCI_MAJOR_VERSION >= 10 && OCCI_MINOR_VERSION >= 1
+  //     We have at least ORACLE 10g >= 10.2.0.X
 #else
-  #error Only ORACLE 10g (>= 10.2.0.X) is supported !
+  #error Only ORACLE 10g >= 10.2.0.X is supported !
 #endif
 
 
-#define SDO_GEOMETRY_METADATA_TABLE     "ALL_SDO_GEOM_METADATA"
-
-
+// geometry types definitions
 enum
 {
     SDO_GTYPE_UNKNOWN                   = 0,
@@ -93,7 +91,7 @@ public:
         if (env_ == 0)
         {
 #ifdef MAPNIK_DEBUG
-            std::clog << "occi_environment constructor" << std::endl;
+            std::clog << "OCCI Plugin: occi_environment constructor" << std::endl;
 #endif
 
             int mode = oracle::occi::Environment::OBJECT
@@ -117,7 +115,7 @@ private:
         if (env_)
         {
 #ifdef MAPNIK_DEBUG
-            std::clog << "occi_environment destructor" << std::endl;
+            std::clog << "OCCI Plugin: occi_environment destructor" << std::endl;
 #endif
 
             oracle::occi::Environment::terminateEnvironment (env_);
@@ -132,17 +130,37 @@ private:
 class occi_connection_ptr
 {
 public:
-    occi_connection_ptr (oracle::occi::StatelessConnectionPool* pool)
-        : pool_ (pool),
-          conn_ (pool->getConnection ()),
+    explicit occi_connection_ptr ()
+        : env_ (occi_environment::get_environment()),
+          pool_ (0),
+          conn_ (0),
           stmt_ (0),
-          rs_ (0)
+          rs_ (0),
+          owns_connection_ (false)
     {
     }
-    
+
     ~occi_connection_ptr ()
     {
         close_query (true);
+    }
+
+    void set_pool(oracle::occi::StatelessConnectionPool* pool)
+    {
+        close_query (true);
+    
+        pool_ = pool;
+        conn_ = pool_->getConnection();
+        owns_connection_ = true;
+    }
+
+    void set_connection(oracle::occi::Connection* conn, bool owns_connection)
+    {
+        close_query (true);
+    
+        pool_ = 0;
+        conn_ = conn;
+        owns_connection_ = owns_connection;
     }
 
     oracle::occi::ResultSet* execute_query (const std::string& s, const unsigned prefetch = 0)
@@ -187,16 +205,40 @@ private:
             
             if (release_connection)
             {
-                pool_->releaseConnection (conn_);
+                if (pool_)
+                {
+                    pool_->releaseConnection (conn_);
+                }
+                else
+                {
+                    if (owns_connection_)
+                    {
+                        env_->terminateConnection(conn_);
+                    }
+                }
+                
                 conn_ = 0;
             }
         }
     }
 
+    oracle::occi::Environment* env_;
     oracle::occi::StatelessConnectionPool* pool_;
     oracle::occi::Connection* conn_;
     oracle::occi::Statement* stmt_;
     oracle::occi::ResultSet* rs_;
+    bool owns_connection_;
 };
+
+
+class occi_enums
+{
+public:
+
+    static std::string resolve_gtype(int gtype);
+    static std::string resolve_etype(int etype);
+    static std::string resolve_datatype(int type_id);
+};
+
 
 #endif // OCCI_TYPES_HPP

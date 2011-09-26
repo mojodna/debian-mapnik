@@ -25,6 +25,8 @@
 
 // Windows DLL support
 
+#define MAPNIK_SUPPORTS_GRID_RENDERER
+
 #ifdef _WINDOWS
 #  define MAPNIK_EXP __declspec (dllexport)
 #  define MAPNIK_IMP __declspec (dllimport)
@@ -44,4 +46,5 @@
 #  define MAPNIK_DECL
 #endif
 
+#define PROJ_ENVELOPE_POINTS 20
 #endif // CONFIG_HPP

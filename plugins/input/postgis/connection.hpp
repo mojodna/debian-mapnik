@@ -34,7 +34,6 @@ extern "C"
 
 #include "resultset.hpp"
 
-class ResultSet;
 class Connection
 {
    private:
@@ -49,16 +48,16 @@ class Connection
          conn_=PQconnectdb(connection_str.c_str());
          if (PQstatus(conn_) != CONNECTION_OK)
          {
-             std::string s("PSQL error");
+             std::ostringstream s("Postgis Plugin: PSQL error");
              if (conn_ )
              {
                  std::string msg = PQerrorMessage( conn_ );
                  if ( ! msg.empty() )
                  {
-                     s += ":\n" + msg.substr( 0, msg.size() - 1 );
+                     s << ":\n" << msg.substr( 0, msg.size() - 1 );
                  }
              } 
-             throw mapnik::datasource_exception( s );
+             throw mapnik::datasource_exception( s.str() );
          }
       }
       
@@ -83,18 +82,20 @@ class Connection
          }
          if(!result || PQresultStatus(result) != PGRES_TUPLES_OK)
          {
-             std::string s("PSQL error");
+             std::ostringstream s("Postgis Plugin: PSQL error");
              if (conn_ )
              {
                  std::string msg = PQerrorMessage( conn_ );
                  if ( ! msg.empty() )
                  {
-                     s += ":\n" + msg.substr( 0, msg.size() - 1 );
+                     s << ":\n" <<  msg.substr( 0, msg.size() - 1 );
                  }
                  
-                 s += "\nFull sql was: '" + sql + "'\n";
-             } 
-             throw mapnik::datasource_exception( s );
+                 s << "\nFull sql was: '" <<  sql << "'\n";
+             }
+             if (result)
+                 PQclear(result);
+             throw mapnik::datasource_exception( s.str() );
          }
 
          return boost::shared_ptr<ResultSet>(new ResultSet(result));
@@ -116,7 +117,7 @@ class Connection
          {
              PQfinish(conn_);
 #ifdef MAPNIK_DEBUG
-             std::clog << "PostGIS: datasource closed, also closing connection - " << conn_ << "\n";
+             std::clog << "PostGIS: datasource closed, also closing connection - " << conn_ << std::endl;
 #endif
              closed_ = true;
          }
@@ -135,7 +136,7 @@ class Connection
          {
              PQfinish(conn_);
 #ifdef MAPNIK_DEBUG
-             std::clog << "PostGIS: postgresql connection closed - " << conn_ << "\n";
+             std::clog << "PostGIS: postgresql connection closed - " << conn_ << std::endl;
 #endif
              closed_ = true;
          }

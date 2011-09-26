@@ -17,15 +17,15 @@
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
-# $Id: wms130.py 1085 2009-04-09 18:40:39Z dane $
+# $Id: wms130.py 1782 2010-05-08 17:07:03Z dane $
 
 """WMS 1.3.0 compliant GetCapabilities, GetMap, GetFeatureInfo, and Exceptions interface."""
 
 from common import ParameterDefinition, Response, Version, ListFactory, \
                    ColorFactory, CRSFactory, CRS, WMSBaseServiceHandler, \
-                   BaseExceptionHandler, Projection, Envelope
+                   BaseExceptionHandler, Projection, Box2d
 from exceptions import OGCException, ServerConfigurationError
-from mapnik import Coord
+from mapnik2 import Coord
 
 try:
     from lxml import etree as ElementTree
@@ -238,7 +238,7 @@ class ServiceHandler(WMSBaseServiceHandler):
         m = WMSBaseServiceHandler._buildMap(self, params)
         # for range of epsg codes reverse axis
         if params['crs'].code >= 4000 and params['crs'].code < 5000:
-            m.zoom_to_box(Envelope(params['bbox'][1], params['bbox'][0], params['bbox'][3], params['bbox'][2]))
+            m.zoom_to_box(Box2d(params['bbox'][1], params['bbox'][0], params['bbox'][3], params['bbox'][2]))
         return m    
 
 class ExceptionHandler(BaseExceptionHandler):

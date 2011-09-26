@@ -26,7 +26,10 @@
 #ifndef RESULTSET_HPP
 #define RESULTSET_HPP
 
-#include "connection.hpp"
+extern "C" 
+{
+#include "libpq-fe.h"
+}
 
 class IResultSet
 {
@@ -53,55 +56,58 @@ private:
     int pos_;
     int numTuples_;
     int *refCount_;
+
 public:
     ResultSet(PGresult *res)
-	:res_(res),pos_(-1),refCount_(new int(1))
+        : res_(res),
+          pos_(-1),
+          refCount_(new int(1))
     {
-	numTuples_=PQntuples(res_);
+        numTuples_=PQntuples(res_);
     }
 
     ResultSet(const ResultSet& rhs)
-	:res_(rhs.res_),
-	 pos_(rhs.pos_),
-	 numTuples_(rhs.numTuples_),
-	 refCount_(rhs.refCount_)
+        : res_(rhs.res_),
+          pos_(rhs.pos_),
+          numTuples_(rhs.numTuples_),
+          refCount_(rhs.refCount_)
     {
-	(*refCount_)++;
+        (*refCount_)++;
     }
 
     ResultSet& operator=(const ResultSet& rhs)
     {
-	if (this==&rhs) return *this;
-	if (--(refCount_)==0)
-	{
-	    close();
-	    delete refCount_,refCount_=0;
-	}
-	res_=rhs.res_;
-	pos_=rhs.pos_;
-	numTuples_=rhs.numTuples_;
-	refCount_=rhs.refCount_;
-	(*refCount_)++;
-	return *this;
+        if (this==&rhs) return *this;
+        if (--(refCount_)==0)
+        {
+            close();
+            delete refCount_,refCount_=0;
+        }
+        res_=rhs.res_;
+        pos_=rhs.pos_;
+        numTuples_=rhs.numTuples_;
+        refCount_=rhs.refCount_;
+        (*refCount_)++;
+        return *this;
     }
 
     virtual void close()
     {
-	PQclear(res_),res_=0;
+        PQclear(res_),res_=0;
     }
 
     virtual ~ResultSet()
     {
-	if (--(*refCount_)==0)
-	{
-	    PQclear(res_);
-	    delete refCount_,refCount_=0;
-	}
+        if (--(*refCount_)==0)
+        {
+            PQclear(res_);
+            delete refCount_,refCount_=0;
+        }
     }
 
     virtual int getNumFields() const
     {
-	return PQnfields(res_);
+        return PQnfields(res_);
     }
 
     int pos() const
@@ -116,38 +122,38 @@ public:
 
     virtual bool next()
     {
-	return (++pos_<numTuples_);
+        return (++pos_<numTuples_);
     }
 
     virtual const char* getFieldName(int index) const
     {
-	return PQfname(res_,index);
+        return PQfname(res_,index);
     }
 
     virtual int getFieldLength(int index) const
     {
-	return PQgetlength(res_,pos_,index);
+        return PQgetlength(res_,pos_,index);
     }
 
     virtual int getFieldLength(const char* name) const
     {
-	int col=PQfnumber(res_,name);
-	if (col>=0)
-	    return PQgetlength(res_,pos_,col);
-	return 0;
+        int col=PQfnumber(res_,name);
+        if (col>=0)
+            return PQgetlength(res_,pos_,col);
+        return 0;
     }
 
     virtual int getTypeOID(int index) const
     {
-	return PQftype(res_,index);
+        return PQftype(res_,index);
     }
 
     virtual int getTypeOID(const char* name) const
     {
-	int col=PQfnumber(res_,name);
-	if (col>=0)
-	    return PQftype(res_,col);
-	return 0;
+        int col=PQfnumber(res_,name);
+        if (col>=0)
+            return PQftype(res_,col);
+        return 0;
     }
     
     virtual bool isNull(int index) const
@@ -157,15 +163,15 @@ public:
     
     virtual const char* getValue(int index) const
     {
-	return PQgetvalue(res_,pos_,index);
+        return PQgetvalue(res_,pos_,index);
     }
 
     virtual const char* getValue(const char* name) const
     {
-	int col=PQfnumber(res_,name);
-	if (col>=0)
-	    return getValue(col);
-	return 0;
+        int col=PQfnumber(res_,name);
+        if (col>=0)
+            return getValue(col);
+        return 0;
     }
 };
 

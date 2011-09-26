@@ -44,21 +44,22 @@
 class kismet_datasource : public mapnik::datasource 
 {
    public:
-      kismet_datasource(mapnik::parameters const& params);
+      kismet_datasource(mapnik::parameters const& params, bool bind=true);
       virtual ~kismet_datasource ();
       int type() const;
       static std::string name();
       mapnik::featureset_ptr features(mapnik::query const& q) const;
       mapnik::featureset_ptr features_at_point(mapnik::coord2d const& pt) const;
-      mapnik::Envelope<double> envelope() const;
+      mapnik::box2d<double> envelope() const;
       mapnik::layer_descriptor get_descriptor() const;
-    
+      void bind() const;
    private:
       void run (const std::string &host, const unsigned int port);
-  
-      static const std::string name_;
-      mapnik::Envelope<double> extent_;
-      mutable bool extent_initialized_;
+
+      mapnik::box2d<double> extent_;
+      bool extent_initialized_;
+      std::string host_;
+      unsigned int port_;
       int type_;
       mapnik::layer_descriptor desc_;
       boost::shared_ptr<boost::thread> kismet_thread;

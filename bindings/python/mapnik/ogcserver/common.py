@@ -17,12 +17,12 @@
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
-# $Id: common.py 1126 2009-05-01 02:27:56Z dane $
+# $Id: common.py 1782 2010-05-08 17:07:03Z dane $
 
 """Core OGCServer classes and functions."""
 
 from exceptions import OGCException, ServerConfigurationError
-from mapnik import Map, Color, Envelope, render, Image, Layer, Style, Projection as MapnikProjection, Coord
+from mapnik2 import Map, Color, Box2d, render, Image, Layer, Style, Projection as MapnikProjection, Coord
 from PIL.Image import new
 from PIL.ImageDraw import Draw
 from StringIO import StringIO
@@ -409,7 +409,7 @@ class WMSBaseServiceHandler(BaseServiceHandler):
                     else:
                         raise ServerConfigurationError('Layer "%s" refers to non-existent style "%s".' % (layername, stylename))
                 m.layers.append(layer)
-        m.zoom_to_box(Envelope(params['bbox'][0], params['bbox'][1], params['bbox'][2], params['bbox'][3]))
+        m.zoom_to_box(Box2d(params['bbox'][0], params['bbox'][1], params['bbox'][2], params['bbox'][3]))
         return m
 
 class BaseExceptionHandler:

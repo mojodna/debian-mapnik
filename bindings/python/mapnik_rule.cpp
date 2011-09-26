@@ -28,11 +28,11 @@
 
 #include <mapnik/rule.hpp>
 #include <mapnik/filter_factory.hpp>
+#include <mapnik/expression_string.hpp>
 
-using mapnik::rule_type;
-using mapnik::filter;
-using mapnik::filter_ptr;
-using mapnik::filter_factory;
+using mapnik::rule;
+using mapnik::expr_node;
+using mapnik::expression_ptr;
 using mapnik::Feature;
 using mapnik::point_symbolizer;
 using mapnik::line_symbolizer;
@@ -44,8 +44,9 @@ using mapnik::shield_symbolizer;
 using mapnik::text_symbolizer;
 using mapnik::building_symbolizer;
 using mapnik::markers_symbolizer;
+using mapnik::glyph_symbolizer;
 using mapnik::symbolizer;
-using mapnik::symbolizers;
+using mapnik::to_expression_string;
 
 struct pickle_symbolizer : public boost::static_visitor<>
 {
@@ -56,7 +57,7 @@ public:
     template <typename T>
     void operator () ( T const& sym )
     {
-	syms_.append(sym);
+        syms_.append(sym);
     }
     
 private:
@@ -67,53 +68,53 @@ private:
 struct extract_symbolizer : public boost::static_visitor<>
 {
 public:
-    extract_symbolizer( rule_type& r): 
+    extract_symbolizer( rule& r): 
         r_(r) {}
         
     template <typename T>
     void operator () ( T const& sym )
     {
-	r_.append(sym);
+        r_.append(sym);
     }
 private:
-    rule_type& r_;
+    rule& r_;
     
 };
 
 struct rule_pickle_suite : boost::python::pickle_suite
 {
     static boost::python::tuple
-    getinitargs(const rule_type& r)
+    getinitargs(const rule& r)
     {
-	return boost::python::make_tuple(r.get_name(),r.get_title(),r.get_min_scale(),r.get_max_scale());
+        return boost::python::make_tuple(r.get_name(),r.get_title(),r.get_min_scale(),r.get_max_scale());
     }
 
     static  boost::python::tuple
-    getstate(const rule_type& r)
+    getstate(const rule& r)
     {
         boost::python::list syms;
         
-        symbolizers::const_iterator begin = r.get_symbolizers().begin();
-        symbolizers::const_iterator end = r.get_symbolizers().end();        
+        rule::symbolizers::const_iterator begin = r.get_symbolizers().begin();
+        rule::symbolizers::const_iterator end = r.get_symbolizers().end();        
         pickle_symbolizer serializer( syms );
         std::for_each( begin, end , boost::apply_visitor( serializer ));
         
-        // Here the filter string is used rather than the actual Filter object
-        // Need to look into how to get the Filter object
-        std::string filter_expr = r.get_filter()->to_string();
-        return boost::python::make_tuple(r.get_abstract(),filter_expr,r.has_else_filter(),syms);
+        // We serialize filter expressions AST as strings
+        std::string filter_expr = to_expression_string(*r.get_filter());
+        
+        return boost::python::make_tuple(r.get_abstract(),filter_expr,r.has_else_filter(),r.has_also_filter(),syms);
     }
 
     static void
-    setstate (rule_type& r, boost::python::tuple state)
+    setstate (rule& r, boost::python::tuple state)
     {
         using namespace boost::python;
         if (len(state) != 4)
         {
             PyErr_SetObject(PyExc_ValueError,
-			    ("expected 4-item tuple in call to __setstate__; got %s"
-			     % state).ptr()
-		);
+                            ("expected 4-item tuple in call to __setstate__; got %s"
+                             % state).ptr()
+                );
             throw_error_already_set();
         }
                 
@@ -124,12 +125,12 @@ struct rule_pickle_suite : boost::python::pickle_suite
 
         if (state[1])
         {
-            rule_type dfl;
+            rule dfl;
             std::string filter = extract<std::string>(state[1]);
-            std::string default_filter = dfl.get_filter()->to_string();
+            std::string default_filter = "<TODO>";//dfl.get_filter()->to_string();
             if ( filter != default_filter)
             {
-                r.set_filter(mapnik::create_filter(filter,"utf8"));
+                r.set_filter(mapnik::parse_expression(filter,"utf8"));
             }
         }    
 
@@ -137,8 +138,13 @@ struct rule_pickle_suite : boost::python::pickle_suite
         {
             r.set_else(true);
         }    
+
+        if (state[3])
+        {
+            r.set_also(true);
+        }
         
-        boost::python::list syms=extract<boost::python::list>(state[3]);
+        boost::python::list syms=extract<boost::python::list>(state[4]);
         extract_symbolizer serializer( r );
         for (int i=0;i<len(syms);++i)
         {
@@ -161,35 +167,39 @@ void export_rule()
     implicitly_convertible<raster_symbolizer,symbolizer>();
     implicitly_convertible<shield_symbolizer,symbolizer>();
     implicitly_convertible<text_symbolizer,symbolizer>();
+    implicitly_convertible<glyph_symbolizer,symbolizer>();
+    implicitly_convertible<markers_symbolizer,symbolizer>();
     
-    class_<symbolizers>("Symbolizers",init<>("TODO"))
-    	.def(vector_indexing_suite<symbolizers>())
-    	;
+    class_<rule::symbolizers>("Symbolizers",init<>("TODO"))
+        .def(vector_indexing_suite<rule::symbolizers>())
+        ;
     
-    class_<rule_type>("Rule",init<>("default constructor"))
+    class_<rule>("Rule",init<>("default constructor"))
         .def(init<std::string const&,
              boost::python::optional<std::string const&,double,double> >())
         .def_pickle(rule_pickle_suite())
         .add_property("name",make_function
-                      (&rule_type::get_name,
+                      (&rule::get_name,
                        return_value_policy<copy_const_reference>()),
-                      &rule_type::set_name)
+                      &rule::set_name)
         .add_property("title",make_function
-                      (&rule_type::get_title,return_value_policy<copy_const_reference>()),
-                      &rule_type::set_title)
+                      (&rule::get_title,return_value_policy<copy_const_reference>()),
+                      &rule::set_title)
         .add_property("abstract",make_function
-                      (&rule_type::get_abstract,return_value_policy<copy_const_reference>()),
-                      &rule_type::set_abstract)
+                      (&rule::get_abstract,return_value_policy<copy_const_reference>()),
+                      &rule::set_abstract)
         .add_property("filter",make_function
-                      (&rule_type::get_filter,return_value_policy<copy_const_reference>()),
-                      &rule_type::set_filter)
-        .add_property("min_scale",&rule_type::get_min_scale,&rule_type::set_min_scale)
-        .add_property("max_scale",&rule_type::get_max_scale,&rule_type::set_max_scale)
-        .def("set_else",&rule_type::set_else)
-        .def("has_else",&rule_type::has_else_filter)
-        .def("active",&rule_type::active)
+                      (&rule::get_filter,return_value_policy<copy_const_reference>()),
+                      &rule::set_filter)
+        .add_property("min_scale",&rule::get_min_scale,&rule::set_min_scale)
+        .add_property("max_scale",&rule::get_max_scale,&rule::set_max_scale)
+        .def("set_else",&rule::set_else)
+        .def("has_else",&rule::has_else_filter)
+        .def("set_also",&rule::set_also)
+        .def("has_also",&rule::has_also_filter)
+        .def("active",&rule::active)
         .add_property("symbols",make_function
-                      (&rule_type::get_symbolizers,return_value_policy<reference_existing_object>()))
+                      (&rule::get_symbolizers,return_value_policy<reference_existing_object>()))
         ;
 }
 

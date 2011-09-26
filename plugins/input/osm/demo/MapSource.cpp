@@ -132,23 +132,23 @@ void MapSource::generateMaps()
         bottomRight.x /= 256;
         bottomRight.y /= 256;
 
-		int x_fetch_freq, y_fetch_freq, x_fetches, y_fetches;
+    int x_fetch_freq, y_fetch_freq, x_fetches, y_fetches;
 
-		if(multirqst)
-		{
-        	// Gives a value approx equal to 0.1 lat/lon in southern UK
-        	x_fetch_freq = (int)(pow(2.0,zoom_start-11));
-        	y_fetch_freq = (int)(pow(2.0,zoom_start-11));
-        	x_fetches = ((bottomRight.x-topLeft.x) / x_fetch_freq)+1, 
+    if(multirqst)
+    {
+          // Gives a value approx equal to 0.1 lat/lon in southern UK
+          x_fetch_freq = (int)(pow(2.0,zoom_start-11));
+          y_fetch_freq = (int)(pow(2.0,zoom_start-11));
+          x_fetches = ((bottomRight.x-topLeft.x) / x_fetch_freq)+1, 
             y_fetches = ((bottomRight.y-topLeft.y) / y_fetch_freq)+1; 
-		}
-		else
-		{
-			x_fetch_freq = bottomRight.x - topLeft.x;
-			y_fetch_freq = bottomRight.y - topLeft.y;
-			x_fetches = 1;
-			y_fetches = 1;
-		}
+    }
+    else
+    {
+      x_fetch_freq = bottomRight.x - topLeft.x;
+      y_fetch_freq = bottomRight.y - topLeft.y;
+      x_fetches = 1;
+      y_fetches = 1;
+    }
 
         fprintf(stderr,"topLeft: %d %d\n",topLeft.x,topLeft.y);
         fprintf(stderr,"bottomRight: %d %d\n",bottomRight.x,bottomRight.y);
@@ -170,7 +170,7 @@ void MapSource::generateMaps()
                                                 *256, zoom_start),
                  bottomR_LL =
                     proj.fromPixelToLL( ((topLeft.x+xfetch*x_fetch_freq)+
-							x_fetch_freq)*256,
+              x_fetch_freq)*256,
                                     ((topLeft.y+yfetch*y_fetch_freq)
                                     +y_fetch_freq)*256, zoom_start),
                            topL_LL = 
@@ -179,10 +179,10 @@ void MapSource::generateMaps()
                                         (topLeft.y+yfetch*y_fetch_freq)
                                                 *256, zoom_start);
 
-				double w1 = min(bottomL_LL.x-0.01,topL_LL.x-0.01),
-					   s1 = min(bottomL_LL.y-0.01,bottomR_LL.y-0.01),
-					   e1 = max(bottomR_LL.x+0.01,topR_LL.x+0.01),
-					   n1 = max(topL_LL.y+0.01,topR_LL.y+0.01);
+        double w1 = min(bottomL_LL.x-0.01,topL_LL.x-0.01),
+             s1 = min(bottomL_LL.y-0.01,bottomR_LL.y-0.01),
+             e1 = max(bottomR_LL.x+0.01,topR_LL.x+0.01),
+             n1 = max(topL_LL.y+0.01,topR_LL.y+0.01);
 
                 parameters p;
                 if(getSource()=="api")
@@ -236,7 +236,7 @@ void MapSource::generateMaps()
                             cerr<<"x: " << tileX << " y: " << tileY
                                 <<" z: " << z << endl;
 
-                           Image32 buf(m.getWidth(),m.getHeight());
+                           image_32 buf(m.width(),m.height());
                            double metres_w =( (tileX*256.0) *
                             metres_per_pixel ) -
                                 20037814.088;
@@ -246,20 +246,20 @@ void MapSource::generateMaps()
                            double metres_e = metres_w + (metres_per_pixel*256);
                            double metres_n = metres_s + (metres_per_pixel*256);
    
-                            Envelope<double> bb
+                            box2d<double> bb
                             (metres_w-32*metres_per_pixel,
                              metres_s-32*metres_per_pixel,
                              metres_e+32*metres_per_pixel,
                              metres_n+32*metres_per_pixel); 
 
-                           m.zoomToBox(bb);
-                           agg_renderer<Image32> r(m,buf);
+                           m.zoom_to_box(bb);
+                           agg_renderer<image_32> r(m,buf);
                            r.apply();
                 
                            string filename="";
                            std::ostringstream str;
                            str<< z<< "."<<tileX<<"." << tileY << ".png";
-                           save_to_file<ImageData32>(buf.data(),
+                           save_to_file<image_data_32>(buf.data(),
                             "tmp.png","png");
                             FILE *in=fopen("tmp.png","r");
                             FILE *out=fopen(str.str().c_str(),"w");
@@ -290,31 +290,31 @@ void MapSource::generateMaps()
         load_map(m,xmlfile);
         setOSMLayers(m,p);
 
-        Envelope<double> latlon=
+        box2d<double> latlon=
             (hasBbox()) ? 
-            Envelope<double>(w,s,e,n):
+            box2d<double>(w,s,e,n):
             m.getLayer(0).envelope();
         
         EarthPoint bottomL_LL = 
             GoogleProjection::fromLLToGoog(latlon.minx(),latlon.miny()),
                    topR_LL =
             GoogleProjection::fromLLToGoog(latlon.maxx(),latlon.maxy());
-        Envelope<double> bb =
-                Envelope<double>(bottomL_LL.x,bottomL_LL.y,
+        box2d<double> bb =
+                box2d<double>(bottomL_LL.x,bottomL_LL.y,
                                 topR_LL.x,topR_LL.y);    
-        m.zoomToBox(bb);
-        Image32 buf (m.getWidth(), m.getHeight());
-        agg_renderer<Image32> r(m,buf);
+        m.zoom_to_box(bb);
+        image_32 buf (m.width(), m.height());
+        agg_renderer<image_32> r(m,buf);
         r.apply();
 
-        save_to_file<ImageData32>(buf.data(),outfile,"png");
+        save_to_file<image_data_32>(buf.data(),outfile,"png");
     }
 }
 
 void MapSource::setOSMLayers(Map& m, const parameters &p)
 {
     parameters q;
-    for(int count=0; count<m.layerCount(); count++)
+    for(int count=0; count<m.layer_count(); count++)
     {
         q = m.getLayer(count).datasource()->params();
         if(boost::get<std::string>(q["type"])=="osm")
@@ -381,12 +381,12 @@ void MapSource::addSRTMLayers(Map& m,double w,double s,double e,double n)
                         <<(lon>=0 ? lon:-lon)<<"c10";
                     p["file"] = str.str();
                     cerr<<"ADDING SRTM LAYER: " << p["file"] << endl;
-                    Layer layer("srtm_" + str.str());
-                    layer.add_style("contours");
-                    layer.add_style("contours-text");
-                    layer.set_datasource
+                    layer lyr("srtm_" + str.str());
+                    lyr.add_style("contours");
+                    lyr.add_style("contours-text");
+                    lyr.set_datasource
                         (datasource_cache::instance()->create(p));
-                    m.addLayer(layer);
+                    m.addLayer(lyr);
                 }
             }
         }

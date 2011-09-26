@@ -22,20 +22,43 @@
 //$Id$
 
 #include <boost/python.hpp>
-#include <mapnik/image_util.hpp>
+
 #include <mapnik/line_pattern_symbolizer.hpp>
+#include <mapnik/parse_path.hpp>
+#include <mapnik/image_util.hpp>
+#include "mapnik_svg.hpp"
 
 using mapnik::line_pattern_symbolizer;
+using mapnik::path_processor_type;
+using mapnik::path_expression_ptr;
+using mapnik::guess_type;
+using mapnik::parse_path;
+
+
+namespace {
+using namespace boost::python;
+
+const std::string get_filename(line_pattern_symbolizer const& t) 
+{ 
+    return path_processor_type::to_string(*t.get_filename()); 
+}
+
+void set_filename(line_pattern_symbolizer & t, std::string const& file_expr) 
+{ 
+    t.set_filename(parse_path(file_expr)); 
+}
+
+}
 
 struct line_pattern_symbolizer_pickle_suite : boost::python::pickle_suite
 {
-   static boost::python::tuple
-   getinitargs(const line_pattern_symbolizer& l)
-   {
-      boost::shared_ptr<mapnik::ImageData32> img = l.get_image();
-      const std::string & filename = l.get_filename();
-      return boost::python::make_tuple(filename,mapnik::guess_type(filename),img->width(),img->height());
-   }
+    static boost::python::tuple
+    getinitargs(const line_pattern_symbolizer& l)
+    {
+        std::string filename = path_processor_type::to_string(*l.get_filename());
+        // FIXME : Do we need "type" parameter at all ?  
+        return boost::python::make_tuple(filename, guess_type(filename));
+    }
 };
 
 void export_line_pattern_symbolizer()
@@ -43,8 +66,14 @@ void export_line_pattern_symbolizer()
     using namespace boost::python;
     
     class_<line_pattern_symbolizer>("LinePatternSymbolizer",
-				    init<std::string const&,
-				    std::string const&,unsigned,unsigned>("TODO"))
-        .def_pickle(line_pattern_symbolizer_pickle_suite())
-	;    
+                                    init<path_expression_ptr>
+                                    ("<image file expression>"))
+        //.def_pickle(line_pattern_symbolizer_pickle_suite())
+        .add_property("transform",
+              mapnik::get_svg_transform<line_pattern_symbolizer>,
+              mapnik::set_svg_transform<line_pattern_symbolizer>)
+        .add_property("filename",
+                      &get_filename,
+                      &set_filename)
+        ;    
 }

@@ -21,70 +21,75 @@
  *****************************************************************************/
 //$Id$
 
+// mapnik
 #include <mapnik/global.hpp>
 #include <mapnik/datasource.hpp>
-#include <mapnik/envelope.hpp>
+#include <mapnik/box2d.hpp>
 #include <mapnik/geometry.hpp>
 #include <mapnik/feature.hpp>
 #include <mapnik/feature_layer_desc.hpp>
 #include <mapnik/wkb.hpp>
 #include <mapnik/unicode.hpp>
+#include <mapnik/feature_factory.hpp>
 
 #include "kismet_featureset.hpp"
 
-using namespace std;
-using namespace mapnik;
+using mapnik::Feature;
+using mapnik::feature_ptr;
+using mapnik::geometry_type;
+using mapnik::geometry_utils;
+using mapnik::transcoder;
+using mapnik::feature_factory;
 
 kismet_featureset::kismet_featureset(const std::list<kismet_network_data> &knd_list,
                                      std::string const& encoding)
-   : knd_list_(knd_list),
-     tr_(new transcoder(encoding)),
-     feature_id (0),
-     knd_list_it(knd_list_.begin ()),
-     source_("+proj=latlong +datum=WGS84")
+    : knd_list_(knd_list),
+      tr_(new transcoder(encoding)),
+      feature_id_(1),
+      knd_list_it(knd_list_.begin ()),
+      source_("+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs")
 {
-    //cout << "kismet_featureset::kismet_featureset()" << endl;
 }
 
-kismet_featureset::~kismet_featureset() {}
+kismet_featureset::~kismet_featureset()
+{
+}
 
 feature_ptr kismet_featureset::next()
 {
-    //cout << "kismet_featureset::next()" << endl;
-  
     if (knd_list_it != knd_list_.end ())
     {
-      const kismet_network_data &knd = *knd_list_it;
-      
-      feature_ptr feature(new Feature(feature_id));
-      string key = "internet_access";
-      string value;
-      
-      if (knd.crypt_ == crypt_none)
-      {
-        value = "wlan_uncrypted";
-      }
-      else if (knd.crypt_ == crypt_wep)
-      {
-        value = "wlan_wep";
-      }
-      else
-      {
-        value = "wlan_crypted";
-      }      
+        const kismet_network_data& knd = *knd_list_it;
+        const std::string key = "internet_access";
 
-      mapnik::geometry2d * pt = new mapnik::point_impl;
-      pt->move_to(knd.bestlon_, knd.bestlat_);
-      feature->add_geometry(pt);
-      (*feature)[key] = tr_->transcode(value.c_str ());
+        std::string value;
+        if (knd.crypt_ == crypt_none)
+        {
+            value = "wlan_uncrypted";
+        }
+        else if (knd.crypt_ == crypt_wep)
+        {
+            value = "wlan_wep";
+        }
+        else
+        {
+            value = "wlan_crypted";
+        }
+
+        feature_ptr feature(feature_factory::create(feature_id_));
+        ++feature_id_;
       
-      ++feature_id;
-      ++knd_list_it;
+        geometry_type* pt = new geometry_type(mapnik::Point);
+        pt->move_to(knd.bestlon_, knd.bestlat_);
+        feature->add_geometry(pt);
+      
+        boost::put(*feature, key, tr_->transcode(value.c_str()));
+      
+        ++knd_list_it;
         
-      return feature;
+        return feature;
     }
     
-    // returns empty object to mark end
     return feature_ptr();
 }
 

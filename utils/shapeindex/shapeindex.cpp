@@ -65,13 +65,13 @@ int main (int argc,char** argv)
             ("ratio,r",po::value<double>(),"split ratio (default 0.55)")
             ("shape_files",po::value<vector<string> >(),"shape files to index: file1 file2 ...fileN")
             ;
-	
+        
         po::positional_options_description p;
         p.add("shape_files",-1);
         po::variables_map vm;        
         po::store(po::command_line_parser(argc, argv).options(desc).positional(p).run(), vm);
         po::notify(vm);
-	
+        
         if (vm.count("version"))
         {
             clog<<"version 0.3.0" <<std::endl;
@@ -83,6 +83,10 @@ int main (int argc,char** argv)
             clog << desc << endl;
             return 1;
         }
+        if (vm.count("verbose")) 
+        {
+            verbose = true;
+        }
         if (vm.count("depth"))
         {
             depth = vm["depth"].as<unsigned int>();
@@ -91,7 +95,7 @@ int main (int argc,char** argv)
         {
             ratio = vm["ratio"].as<double>();
         }
-	
+        
         if (vm.count("shape_files"))
         {
             shape_files=vm["shape_files"].as< vector<string> >();
@@ -115,13 +119,13 @@ int main (int argc,char** argv)
     while (itr != shape_files.end())
     {
         clog << "processing " << *itr << endl;
-        //shape_file shp;
         std::string shapename (*itr++);
+        boost::algorithm::ireplace_last(shapename,".shp","");
         std::string shapename_full (shapename+".shp");
 
         if (! boost::filesystem::exists (shapename_full))
         {
-            clog << "error : file " << shapename_full << " doesn't exists" << endl;
+            clog << "error : file " << shapename_full << " does not exist" << endl;
             continue;
         }
 
@@ -135,40 +139,40 @@ int main (int argc,char** argv)
         int code = shp.read_xdr_integer(); //file_code == 9994
         clog << code << endl;
         shp.skip(5*4); 
-	
+        
         int file_length=shp.read_xdr_integer();
         int version=shp.read_ndr_integer();
         int shape_type=shp.read_ndr_integer();
-        Envelope<double> extent;
+        box2d<double> extent;
         shp.read_envelope(extent);
-	
+        
+        
         clog << "length=" << file_length << endl;
         clog << "version=" << version << endl;
         clog << "type=" << shape_type << endl;
         clog << "extent:" << extent << endl;
-	  
+          
         int pos=50;
         shp.seek(pos*2);  
         quadtree<int> tree(extent,depth,ratio);
         int count=0;
         while (true) {
-	    
+            
             long offset=shp.pos();
             int record_number=shp.read_xdr_integer();
             int content_length=shp.read_xdr_integer();
-#ifdef MAPNIK_DEBUG            
-            std::clog << "rec number = "<< record_number << "\n";
-            std::clog << "content length = "<< content_length << "\n";
-	    std::clog << "offset= "<< offset << std::endl;
-#endif
-            shp.skip(4);	        
-            Envelope<double> item_ext;
-            if (shape_type==shape_io::shape_point)
+            shape_type = shp.read_ndr_integer();    
+            box2d<double> item_ext;
+            if (shape_type==shape_io::shape_null)
+            {
+                continue;
+            }
+            else if (shape_type==shape_io::shape_point)
             {
                 double x=shp.read_double();
                 double y=shp.read_double();
-                item_ext=Envelope<double>(x,y,x,y);
-	
+                item_ext=box2d<double>(x,y,x,y);
+        
             }
             else if (shape_type==shape_io::shape_pointm)
             {
@@ -176,8 +180,8 @@ int main (int argc,char** argv)
                 double y=shp.read_double();
                 // skip m
                 shp.read_double();
-                item_ext=Envelope<double>(x,y,x,y);
-	
+                item_ext=box2d<double>(x,y,x,y);
+        
             }
             else if (shape_type==shape_io::shape_pointz)
             {
@@ -190,9 +194,9 @@ int main (int argc,char** argv)
                 {
                     shp.read_double();
                 }
-                item_ext=Envelope<double>(x,y,x,y);
+                item_ext=box2d<double>(x,y,x,y);
             }
-	
+        
             else 
             {   
                 shp.read_envelope(item_ext);
@@ -211,8 +215,7 @@ int main (int argc,char** argv)
                 break;
             }  
         } 
-        shp.close();
-  
+        
         clog << " number shapes=" << count << endl;  
     
         std::fstream file((shapename+".index").c_str(),

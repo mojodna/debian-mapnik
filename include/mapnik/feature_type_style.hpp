@@ -27,41 +27,46 @@
 // mapnik 
 #include <mapnik/rule.hpp>
 #include <mapnik/feature.hpp>
+#include <mapnik/enumeration.hpp>
 // stl
 #include <vector>
 
 namespace mapnik
 {
-    typedef std::vector<rule_type> rules;
-    class feature_type_style
-    {
-    private:
-        rules  rules_;
-    public:
-        feature_type_style() {}
 
-        feature_type_style(feature_type_style const& rhs)
-            : rules_(rhs.rules_) {}
-	
-        feature_type_style& operator=(feature_type_style const& rhs)
-        {
-            if (this == &rhs) return *this;
-            rules_=rhs.rules_;
-            return *this;
-        }
-	
-        void add_rule(rule_type const& rule)
-        {
-            rules_.push_back(rule);
-        } 
-	
-        rules const& get_rules() const
-        {
-            return rules_;
-        }
+enum filter_mode_enum {
+    FILTER_ALL,
+    FILTER_FIRST,
+    filter_mode_enum_MAX
+};
+
+DEFINE_ENUM( filter_mode_e, filter_mode_enum );
+
+typedef std::vector<rule> rules;
+class feature_type_style
+{
+private:
+    rules  rules_;
+    filter_mode_e filter_mode_;
+public:
+    feature_type_style();
+
+    feature_type_style(feature_type_style const& rhs);
         
-        ~feature_type_style() {}
-    };
+    feature_type_style& operator=(feature_type_style const& rhs);
+        
+    void add_rule(rule const& rule);
+        
+    rules const& get_rules() const;
+
+    rules &get_rules_nonconst();
+        
+    void set_filter_mode(filter_mode_e mode);
+
+    filter_mode_e get_filter_mode() const;
+    
+    ~feature_type_style() {}
+};
 }
 
 #endif //FEATURE_TYPE_STYLE_HPP

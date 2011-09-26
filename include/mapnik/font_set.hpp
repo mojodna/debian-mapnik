@@ -24,32 +24,32 @@
 
 #ifndef FONT_SET_HPP
 #define FONT_SET_HPP
+
 // mapnik
 #include <mapnik/config.hpp>
-// boost
-#include <boost/shared_ptr.hpp>
+
 // stl
 #include <string>
 #include <vector>
 
 namespace mapnik
 {
-    class MAPNIK_DECL FontSet
-    {
-        public:
-            FontSet(); 
-            FontSet(std::string const& name); 
-            FontSet(FontSet const& rhs);
-            FontSet& operator=(FontSet const& rhs);
-            unsigned size() const;
-            std::string const& get_name() const;
-            void add_face_name(std::string);
-            std::vector<std::string> const& get_face_names() const;
-            ~FontSet();
-        private:
-            std::string name_;
-            std::vector<std::string> face_names_;
-    };
+class MAPNIK_DECL font_set
+{
+public:
+    font_set(); 
+    font_set(std::string const& name); 
+    font_set(font_set const& rhs);
+    font_set& operator=(font_set const& rhs);
+    unsigned size() const;
+    std::string const& get_name() const;
+    void add_face_name(std::string);
+    std::vector<std::string> const& get_face_names() const;
+    ~font_set();
+private:
+    std::string name_;
+    std::vector<std::string> face_names_;
+};
 }
 
 #endif //FONT_SET_HPP

@@ -26,7 +26,7 @@
 
 // mapnik
 #include <mapnik/datasource.hpp>
-#include <mapnik/envelope.hpp>
+#include <mapnik/box2d.hpp>
 #include <mapnik/feature.hpp>
 #include <mapnik/feature_layer_desc.hpp>
 
@@ -39,32 +39,33 @@
 class occi_datasource : public mapnik::datasource 
 {
    public:
-      occi_datasource(mapnik::parameters const& params);
+      occi_datasource(mapnik::parameters const& params, bool bind=true);
       virtual ~occi_datasource ();
       int type() const;
       static std::string name();
       mapnik::featureset_ptr features(mapnik::query const& q) const;
       mapnik::featureset_ptr features_at_point(mapnik::coord2d const& pt) const;
-      mapnik::Envelope<double> envelope() const;
+      mapnik::box2d<double> envelope() const;
       mapnik::layer_descriptor get_descriptor() const;
+      void bind() const;
    private:
-      const std::string uri_;
-      const std::string username_;
-      const std::string password_;
-      const std::string table_;
-      const std::string geometry_field_;
-      std::string geometryColumn_;
       int type_;
-      int srid_;
+      mutable std::string table_;
+      mutable std::string fields_;
+      mutable std::string geometry_field_;
+      mutable int srid_;
+      mutable bool srid_initialized_;
       mutable bool extent_initialized_;
-      mutable mapnik::Envelope<double> extent_;
-      const int row_limit_;
-      const int row_prefetch_;
-      mapnik::layer_descriptor desc_;
-      oracle::occi::StatelessConnectionPool* pool_;
+      mutable mapnik::box2d<double> extent_;
+      mutable mapnik::layer_descriptor desc_;
+      int row_limit_;
+      int row_prefetch_;
+      mutable oracle::occi::StatelessConnectionPool* pool_;
+      mutable oracle::occi::Connection* conn_;
+      bool use_connection_pool_;
       bool multiple_geometries_;
       bool use_spatial_index_;
-      static const std::string name_;
+      static const std::string METADATA_TABLE;
 };
 
 

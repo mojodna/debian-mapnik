@@ -11,46 +11,95 @@ Developers: Please commit along with changes.
 For a complete change history, see the SVN log.
 
 
+Mapnik Trunk
+------------
 
-Mapnik 0.7.1 Release
---------------------
+- Add minimum-path-length property to text_symbolizer to allow labels to be placed only on lines of a certain length (#865)
 
-(Packaged from r1745)
+- Add support for png quantization using fixed palettes (#843)
 
-- Rasters: Various fixes and improvements to 8bit png output (#522,#475)
+- Add AlsoFilter functionality - http://trac.mapnik.org/wiki/AlsoFilter
 
-- XML: Save map buffer_size when serializing map.
+- SQLite Plugin: optimize i/o using shared cache and no mutexes (#797)
 
-- SCons: Added new build options 'PRIORITIZE_LINKING' and 'LINK_PRIORITY'. The first is a boolean (default True)
-  of whether to use the new sorting implementation that gives explcit preference to custom or local paths
-  during compile and linking that will affect builds when duplicate libraries and include directories are on the
-  system. LINK_PRIORITY defaults to prioritizing internal sources of the mapnik source folder, then local/user 
-  installed libraries over system libraries, but the option can be customized. Sorting not only ensures that 
-  compiling and linking will more likely match the desired libraries but also gives more likelyhood to avoid 
-  the scenario where libraries are linked that don't match the includes libmapnik compiled against.
+- Directly link input plugins to libmapnik to avoid having to set dlopen flags from binding languages (#790)
 
-- XML: Fixed behavior of PolygonPatternSymbolizer and LinePatternSymbolizer whereby width, height,
-  and type of images is actually allowed to be optionally ommitted (#508). This was added in r1543 but
-  only worked correctly for PointSymbolizer and ShieldSymbolizer. 
+- Throw an error during registration for fonts which Freetype2 does not report a family or style name (r2985).
+
+- Fixed quoting syntax for "table"."attribute" in PostGIS plugin (previously if table aliases were used quoting like "table.attribute" would cause query failure) (r2979).
+
+- Added the ability to control the PostGIS feature id by suppling a key_field to reference and integer attribute name (r2979).
+
+- Added alternative, more robust proj_transform functions to project a bbox using more points than just the four
+  corners to ensure an optimally sized bbox despite proj4 out of bounds conditions. (olt)
+
+- Added map.base parameter that can be set to control where files with relative paths should be interpreted
+  from when a map is loaded from a string or saved to a string. It defaults to an empty string which means
+  that the base path will be the current working directory of the mapnik process. When a stylesheet is read
+  from a file that files directory is used. And a custom value can still be passed as an argument to 
+  load_map_from_string().
+
+- Added python function 'render_grid' to allow conversion of grid buffer to python object containing list of grid
+  pixels, list of keys, and a and dictionary of feature attributes.
+
+- Added new rendering backend, grid_renderer, that collects the attributes of rendered features and
+  burns their ids into a grid buffer.
+
+- Added optional 'maximum-extent' parameter to map object. If set will be used, instead of combined
+  layer extents, for return value of map.zoom_all(). Useful in cases where the combined layer extents
+  cannot possibly be projected into the map srs or the user wishes to control map bounds without
+  modifying the extents of each layer.
+
+- Support for NODATA values with grey and rgb images in GDAL plugin (#727)
+
+- Print warning if invalid XML property names are used (#110)
+
+- Made XML property names use consistent dashes, never underscores (#644)
+
+- Added support for drawing only first matching rule using filter-mode="first" in Style (#706)
+
+- Added support to PointSymbolizer ('ignore_placement') for skipping adding placed points to collision detector (#564)
+
+- Added ability to register fonts within XML using Map level 'font_directory' parameter (#168)
+
+- TextSymbolizer: Change text_convert to text_transform to better match css naming (r2211)
+
+- Shapefile Plugin: Throw error if attribute name is requested that does not exist (#604)
+
+- Upgraded to the latest proj4 string literal for EPSG:4326 (WGS84) as global default projection (#333)
+
+- Added 'mapnik_version_from_string()' function in python bindings to easily convert string representation
+  of version number to the integer format used in 'mapnik/version.hpp'. e.g. '0.7.1' --> 701.
+
+- Added xinclude (http://www.w3.org/TR/xinclude/) support to libxml2-based xml parser (oldtopos) (#567)
+
+- Optimized rendering speeds by avoiding locking in the projection code (r2063) (r2713)
+
+- Added support for setting global alignment of polygon pattern fills (#203)
+
+- Added support for choosing OGR layer by index number using 'layer_by_index' parameter (r1904)
+
+- Added support for fractional halo widths (using FT Stroker) (#93)
+
+- Added support for reading jpeg images (in addition to png/tiff) for image symbolizers (#518)
+
+- Made libjpeg dependency optional at compile time and added mapnik2.has_jpeg() method to check for support in python (#545).
 
 - Fixed reading of PostGIS data on Big Endian systems (#515)
 
-- PostGIS: Added better support for alterative schemas (#500)
+- PostGIS: Added better support for alternative schemas (#500)
 
 - AGG Renderer - Enforced default gamma function on all symbolizers to ensure proper antialiasing
   even when gamma is modified on the PolygonSymbolizer. (#512)
 
+- Added ability to read pre 2.0.0 stylesheets, but prints a warning for deprecated syntax (r1592, #501)
+
+- Rasterlite Plugin: Experimental support for Rasterlite, to practically use sqlite database with wavelet compressed rasters (#469)
+
 - PNG: fixed png256 for large images and some improvements to reduce color corruptions (#522)
 
-- PNG: Added new quantization method for indexed png format using hextree with full support for alpha
-  channel. Also new method has some optimizations for color gradients common when using elevation based
-  rasters. By default old method using octree is used. (r1680, r1683, #477)
+- Implement MarkersSymbolizer in Cairo render and improve the markers placement finder. (#553)
 
-- PNG: Added initial support for passing options to png writter like number of colors, transparency
-  support, quantization method and possibly other in future using type parameter. For example
-  "png8:c=128:t=1:m=h" limits palette to 128 colors, uses only binary transparency (0 - none,
-  1 - binary, 2 - full), and new method of quantization using hextree (h - hextree, o - octree).
-  Existing type "png256" can be also written using "png8:c=256:m=o:t=2"  (r1680, r1683, #477)
 
 Mapnik 0.7.0 Release
 --------------------
@@ -84,13 +133,21 @@ Mapnik 0.7.0 Release
   in cases where the subquery limits results, provide a faster and more accurate layer extent. It will have
   no effect if the 'table' parameter is simply an existing table. This parameter is false by default. (#456)
 
-- PostGIS Plugin: Added 'bbox' token substitution ability in sql query string. This opens the door for various
+- PostGIS Plugin: Added '!bbox!' token substitution ability in sql query string. This opens the door for various
   complex queries that may aggregate geometries to be kept fast by allowing proper placement of the bbox
   query to be used by indexes. (#415)
 
     * Pass the bbox token inside a subquery like: !bbox!
+    
+    * Valid Usages include:
 
-    * e.g. (Select ST_Union(geom) as geom from table where ST_Intersects(geometry,!bbox!)) as map
+      <Parameter name="table">
+        (Select ST_Union(geom) as geom from table where ST_Intersects(geometry,!bbox!)) as map
+      </Parameter>
+
+      <Parameter name="table">
+        (Select * from table where geom &amp;&amp; !bbox!) as map
+      </Parameter>
 
 - PostGIS Plugin: Added 'scale_denominator' substitution ability in sql query string (#415/#465)
 
@@ -117,22 +174,22 @@ Mapnik 0.7.0 Release
 
 - Shape Plugin: Fixed missing compiler flags that causes crashing on newer g++ versions (#436)
 
-- PNG: Fixed problem with garbled/striped png256 output along sharpe edges(#416,#445,#447,#202)
+- PNG: Fixed problem with garbled/striped png256 output along sharp edges(#416,#445,#447,#202)
 
-- PNG: Added support for semitransparency in png256 output (#477,#202)
+- PNG: Added support for semi-transparency in png256 output (#477,#202)
 
 - PolygonSymbolizer: Added 'gamma' attribute to allow for dilation of polygon edges - a solution
   to gap artifacts or "ghost lines" between adjacent polygons and allows for slight sharpening of
   the edges of non overlapping polygons. Accepts any values but 0-1 is the recommended range.
    
-- TextSymbolizer: Large set of new attributes: 'text_convert', 'line_spacing', 'character_spacing', 
+- TextSymbolizer: Large set of new attributes: 'text_transform', 'line_spacing', 'character_spacing', 
   'wrap_character', 'wrap_before', 'horizontal_alignment', 'justify_alignment', and 'opacity'.
 
     * More details at changesets: r1254 and r1341
 
 - SheildSymbolizer: Added special new attributes: 'unlock_image', 'VERTEX' placement, 'no_text' and many
   attributes previously only supported in the TextSymbolizer: 'allow_overlap', 'vertical_alignment', 
-  'horizontal_alignment', 'justify_alignment', 'wrap_width', 'wrap_character', 'wrap_before', 'text_convert',
+  'horizontal_alignment', 'justify_alignment', 'wrap_width', 'wrap_character', 'wrap_before', 'text_transform',
   'line_spacing', 'character_spacing', and 'opacity'.
 
     * More details at changeset r1341
@@ -192,6 +249,8 @@ Mapnik 0.6.1 Release
 --------------------
 
 (Packaged from r1247)
+
+- Plugins: expose list of registered plugins as a 'plugin_names()' method of DatasourceCache (r1180) 
 
 - XML: Fixed serialization and parsing bugs related to handling of integers and Enums (#328,#353)
 
@@ -346,6 +405,8 @@ Mapnik 0.6.0 Release
 - Symbolizers: Added support of using Points with Shield Symbolizer (r741)
 
 - Plugins: PostGIS plugin now accepts alternate schemas (r773)
+
+- Core: Added a Map aspect_fix_mode to ensure proper syncing of map dimensions and bbox (r705)
 
 - Fonts: Added support for fallback fonts (r704)
 

@@ -24,61 +24,72 @@
 #define SHAPE_IO_HPP
 
 // mapnik
-#include "dbffile.hpp"
+#include "dbfile.hpp"
 #include "shapefile.hpp"
 #include "shp_index.hpp"
 // boost
 #include <boost/utility.hpp>
-
-using mapnik::geometry2d;
+#include <boost/shared_ptr.hpp>
 
 struct shape_io : boost::noncopyable
 {
-      static const std::string SHP;
-      static const std::string SHX;
-      static const std::string DBF;
-      unsigned type_;
-      shape_file shp_;
-      shape_file shx_;
-      dbf_file   dbf_;
-      
-      unsigned reclength_;
-      unsigned id_;
-      Envelope<double> cur_extent_;
+    static const std::string SHP;
+    //static const std::string SHX;
+    static const std::string DBF;
+    static const std::string INDEX;
+    unsigned type_;
+    shape_file shp_;
+    //shape_file shx_;
+    dbf_file   dbf_;
+    boost::shared_ptr<shape_file>  index_;
+    unsigned reclength_;
+    unsigned id_;
+    box2d<double> cur_extent_;
+    
+public:
+    enum shapeType
+    {
+        shape_null = 0,
+        shape_point = 1,
+        shape_polyline = 3,
+        shape_polygon = 5,
+        shape_multipoint = 8,
+        shape_pointz = 11,
+        shape_polylinez = 13,
+        shape_polygonz = 15,
+        shape_multipointz = 18,
+        shape_pointm = 21,
+        shape_polylinem = 23,
+        shape_polygonm = 25,
+        shape_multipointm = 28,
+        shape_multipatch = 31
+    };
 
-   public:
-      enum shapeType
-      {
-         shape_null = 0,
-         shape_point = 1,
-         shape_polyline = 3,
-         shape_polygon = 5,
-         shape_multipoint = 8,
-         shape_pointz = 11,
-         shape_polylinez = 13,
-         shape_polygonz = 15,
-         shape_multipointz = 18,
-         shape_pointm = 21,
-         shape_polylinem = 23,
-         shape_polygonm = 25,
-         shape_multipointm = 28,
-         shape_multipatch = 31
-      };
-
-      shape_io(const std::string& shape_name);
-      ~shape_io();
-      shape_file& shp();
-      shape_file& shx();
-      dbf_file& dbf();
-      void move_to(int id);
-      int type() const;
-      const Envelope<double>& current_extent() const;
-      geometry2d * read_polyline();
-      geometry2d * read_polylinem();
-      geometry2d * read_polylinez();
-      geometry2d * read_polygon();
-      geometry2d * read_polygonm();
-      geometry2d * read_polygonz();
+    shape_io(const std::string& shape_name, bool open_index=true);
+    ~shape_io();
+    shape_file& shp();
+    //shape_file& shx();
+    dbf_file& dbf();
+    
+    inline boost::shared_ptr<shape_file>& index()
+    {
+        return index_;
+    }
+    
+    inline bool has_index() const
+    {
+        return (index_ && index_->is_open());
+    }
+    
+    void move_to(int id);
+    int type() const;
+    const box2d<double>& current_extent() const;
+    mapnik::geometry_type * read_polyline();
+    mapnik::geometry_type * read_polylinem();
+    mapnik::geometry_type * read_polylinez();
+    mapnik::geometry_type * read_polygon();
+    mapnik::geometry_type * read_polygonm();
+    mapnik::geometry_type * read_polygonz();
 };
 
 #endif //SHAPE_IO_HPP

@@ -1,12 +1,8 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!DOCTYPE Map  >
-<Map bgcolor="red">
+<!DOCTYPE Map>
+<Map background-color="red" minimum-version="0.7.2">
     <Style name="some_style">
       <Rule name="some_rule">
-        <LineSymbolizer>
-          <CssParameter name="stroke">red</CssParameter>
-          <CssParameter name="stroke-dasharray">1.0, 4.0, foo, 6.0</CssParameter>
-        </LineSymbolizer>
+        <LineSymbolizer stroke="red" stroke-dasharray="1.0, 4.0, foo, 6.0"/>
       </Rule>
     </Style>
 </Map>

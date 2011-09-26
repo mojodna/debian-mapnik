@@ -25,19 +25,21 @@
 #ifndef SHAPEFILE_HPP
 #define SHAPEFILE_HPP
 
+// mapnik
 #include <mapnik/global.hpp>
-#include <mapnik/envelope.hpp>
+#include <mapnik/box2d.hpp>
+#include <mapnik/mapped_memory_cache.hpp>
+
 // boost
 #include <boost/utility.hpp>
 #include <boost/cstdint.hpp>
-#include <boost/iostreams/stream.hpp>
+#include <boost/interprocess/streams/bufferstream.hpp>
 
-#include <boost/iostreams/device/file.hpp>
-#include <boost/iostreams/device/mapped_file.hpp>
-
+// stl
 #include <cstring>
+#include <fstream>
 
-using mapnik::Envelope;
+using mapnik::box2d;
 using mapnik::read_int32_ndr;
 using mapnik::read_int32_xdr;
 using mapnik::read_double_ndr;
@@ -94,7 +96,7 @@ struct shape_record
       
     int read_ndr_integer()
     {
-	boost::int32_t val;
+        boost::int32_t val;
         read_int32_ndr(&data[pos],val);
         pos+=4;
         return val;
@@ -102,7 +104,7 @@ struct shape_record
       
     int read_xdr_integer()
     {
-	boost::int32_t val;
+        boost::int32_t val;
         read_int32_xdr(&data[pos],val);
         pos+=4;
         return val;
@@ -127,52 +129,61 @@ struct shape_record
  
 };
 
-using namespace boost::iostreams;
+using namespace boost::interprocess;
 
 class shape_file : boost::noncopyable
 {  
-#ifdef SHAPE_MEMORY_MAPPED_FILE
-    stream<mapped_file_source> file_;
-#else
-    stream<file_source> file_;
-#endif
-    
 public:
+
 #ifdef SHAPE_MEMORY_MAPPED_FILE
+    typedef ibufferstream file_source_type;
     typedef shape_record<MappedRecordTag> record_type;
 #else
+    typedef std::ifstream file_source_type;
     typedef shape_record<RecordTag> record_type;
 #endif
     
+    file_source_type file_;
     shape_file() {}
-
+    
     shape_file(std::string  const& file_name)
-        : 
+        :
 #ifdef SHAPE_MEMORY_MAPPED_FILE
-        file_(file_name)
-#else
-        file_(file_name,std::ios::in | std::ios::binary)
+        file_()
+#else  
+        file_(file_name.c_str(), std::ios::in | std::ios::binary)
 #endif
-    {}
+    {
+#ifdef SHAPE_MEMORY_MAPPED_FILE
+        
+        boost::optional<mapnik::mapped_region_ptr> memory = mapnik::mapped_memory_cache::find(file_name.c_str(),true);
+        if (memory)
+        {
+            file_.buffer(static_cast<char*>((*memory)->get_address()),(*memory)->get_size());
+        }
+#endif        
+    }
     
     ~shape_file() {}
 
+    inline file_source_type & file()
+    {
+        return file_;
+    }
+    
     inline bool is_open()
     {
+#ifdef SHAPE_MEMORY_MAPPED_FILE
+        return (file_.buffer().second > 0);
+#else
         return file_.is_open();
-    }
-
-
-    inline void close()
-    {
-        if (file_ && file_.is_open())
-            file_.close();
+#endif
     }
     
     inline void read_record(record_type& rec)
     {
 #ifdef SHAPE_MEMORY_MAPPED_FILE
-        rec.set_data(file_->data() + file_.tellg());
+        rec.set_data(file_.buffer().first + file_.tellg());
         file_.seekg(rec.size,std::ios::cur);
 #else
         file_.read(rec.get_data(),rec.size);
@@ -210,7 +221,7 @@ public:
         return val;
     }
     
-    inline void read_envelope(Envelope<double>& envelope)
+    inline void read_envelope(box2d<double>& envelope)
     {
 #ifndef MAPNIK_BIG_ENDIAN
         file_.read(reinterpret_cast<char*>(&envelope),sizeof(envelope));

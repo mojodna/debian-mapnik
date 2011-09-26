@@ -27,29 +27,39 @@
 
 // mapnik
 #include <mapnik/projection.hpp>
+#include <mapnik/box2d.hpp>
+
 // boost
 #include <boost/utility.hpp>
 
 namespace mapnik {
     
-    class MAPNIK_DECL proj_transform : private boost::noncopyable
-    {
-    public:
-        proj_transform(projection const& source, 
-                       projection const& dest);
+class MAPNIK_DECL proj_transform : private boost::noncopyable
+{
+public:
+    proj_transform(projection const& source, 
+                   projection const& dest);
         
-        bool forward (double& x, double& y , double& z) const;
-        bool backward (double& x, double& y , double& z) const;
-        mapnik::projection const& source() const;
-        mapnik::projection const& dest() const;
+    bool equal() const;
+    bool forward (double& x, double& y , double& z) const;
+    bool backward (double& x, double& y , double& z) const;
+    bool forward (double *x, double *y , double *z, int point_count) const;
+    bool backward (double *x, double *y , double *z, int point_count) const;
+    bool forward (box2d<double> & box) const;
+    bool backward (box2d<double> & box) const;
+    bool forward (box2d<double> & box, int points) const;
+    bool backward (box2d<double> & box, int points) const;
+    mapnik::projection const& source() const;
+    mapnik::projection const& dest() const;
         
-    private:
-        projection const& source_;
-        projection const& dest_;
-        bool is_source_latlong_;
-        bool is_dest_latlong_;
-        bool is_source_equal_dest;
-    };
+private:
+    projection const source_;
+    projection const dest_;
+    bool is_source_longlat_;
+    bool is_dest_longlat_;
+    bool is_source_equal_dest_;
+    bool wgs84_to_merc_;
+};
 }
 
 #endif // PROJ_TRANSFORM_HPP
