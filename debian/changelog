@@ -1,3 +1,9 @@
+mapnik (2.0.0-1) UNRELEASED; urgency=low
+
+  * New upstream version
+
+ -- David Paleino <dapal@debian.org>  Mon, 26 Sep 2011 22:20:38 +0200
+
 mapnik (0.7.1-5) unstable; urgency=low
 
   * Correctly trap errors in debian/rules, thanks to Jakub Wilk
