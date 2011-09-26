@@ -6,15 +6,16 @@ Uploaders: Debian OpenStreetMap Team <pkg-osm-maint@lists.alioth.debian.org>
  , Francesco Paolo Lovergine <frankie@debian.org>
 Build-Depends:
  scons
- , python-support (>= 0.90.0~)
+# , python-support (>= 0.90.0~)
  , debhelper (>= 8~)
+ , libtool
  , python-all-dev
  , libboost-thread-dev
  , libboost-filesystem-dev
  , libboost-regex-dev
  , libboost-python-dev
  , libboost-system-dev
- , libboost-iostreams-dev
+# , libboost-iostreams-dev
  , libboost-program-options-dev
  , libpng12-dev
  , libjpeg-dev
@@ -24,7 +25,7 @@ Build-Depends:
  , libpq-dev
  , libproj-dev
  , libltdl-dev
- , libfribidi-dev
+# , libfribidi-dev
  , libgdal1-dev
  , libxml2-dev
  , libicu-dev
@@ -33,8 +34,9 @@ Build-Depends:
  , python-cairo-dev
  , libsqlite3-dev
  , libcurl4-gnutls-dev
- , libsigc++-2.0-dev
- , python-epydoc
+# , libsigc++-2.0-dev
+# , python-epydoc
+ , pkg-config
 Standards-Version: 3.9.2
 Section: libs
 XS-Python-Version: >= 2.5
