@@ -40,31 +40,41 @@
 class sqlite_datasource : public mapnik::datasource 
 {
    public:
-      sqlite_datasource(mapnik::parameters const& params);
+      sqlite_datasource(mapnik::parameters const& params, bool bind=true);
       virtual ~sqlite_datasource ();
       int type() const;
       static std::string name();
       mapnik::featureset_ptr features(mapnik::query const& q) const;
       mapnik::featureset_ptr features_at_point(mapnik::coord2d const& pt) const;
-      mapnik::Envelope<double> envelope() const;
+      mapnik::box2d<double> envelope() const;
       mapnik::layer_descriptor get_descriptor() const;
+      void bind() const;
    private:
-      static const std::string name_;
-      mapnik::Envelope<double> extent_;
+      mutable mapnik::box2d<double> extent_;
       mutable bool extent_initialized_;
       int type_;
-      std::string dataset_name_;
-      sqlite_connection* dataset_;
+      mutable std::string dataset_name_;
+      mutable sqlite_connection* dataset_;
       std::string table_;
+      std::string fields_;
       std::string metadata_;
-      std::string geometry_field_;
-      std::string key_field_;
-      const int row_offset_;
-      const int row_limit_;
-      mapnik::layer_descriptor desc_;
-      mapnik::wkbFormat format_;
-      bool multiple_geometries_;
-      bool use_spatial_index_;
+      mutable std::string geometry_table_;
+      mutable std::string geometry_field_;
+      mutable std::string index_table_;
+      mutable std::string key_field_;
+      mutable int row_offset_;
+      mutable int row_limit_;
+      mutable mapnik::layer_descriptor desc_;
+      mutable mapnik::wkbFormat format_;
+      mutable bool multiple_geometries_;
+      mutable bool use_spatial_index_;
+      mutable bool has_spatial_index_;
+      mutable bool using_subquery_;
+      mutable std::vector<std::string> init_statements_;
+      
+      // Fill init_statements with any statements
+      // needed to attach auxillary databases
+      void parse_attachdb(std::string const& attachdb) const;
 };
 
 

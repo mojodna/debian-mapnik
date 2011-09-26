@@ -24,22 +24,37 @@
 #ifndef POLYGON_PATTERN_SYMBOLIZER_HPP
 #define POLYGON_PATTERN_SYMBOLIZER_HPP
 
-#include <mapnik/graphics.hpp> 
-#include <mapnik/symbolizer.hpp> 
-#include <boost/shared_ptr.hpp>
+// mapnik 
+#include <mapnik/symbolizer.hpp>
+#include <mapnik/enumeration.hpp>
 
 namespace mapnik
 {
-    struct MAPNIK_DECL polygon_pattern_symbolizer :
-            public symbolizer_with_image
-    {
-	
-        polygon_pattern_symbolizer(std::string const& file,
-                                   std::string const& type,
-                                   unsigned width,unsigned height);
+
+enum pattern_alignment_enum {
+    LOCAL_ALIGNMENT,
+    GLOBAL_ALIGNMENT,
+    pattern_alignment_enum_MAX
+};
+
+DEFINE_ENUM( pattern_alignment_e, pattern_alignment_enum );
+
+struct MAPNIK_DECL polygon_pattern_symbolizer :
+        public symbolizer_with_image, public symbolizer_base
+{
         
-        polygon_pattern_symbolizer(polygon_pattern_symbolizer const& rhs);
-    };
+    polygon_pattern_symbolizer(path_expression_ptr file);
+    polygon_pattern_symbolizer(polygon_pattern_symbolizer const& rhs);
+    pattern_alignment_e get_alignment() const;
+    void set_alignment(pattern_alignment_e align);
+    void set_gamma(double gamma);
+    double get_gamma() const;
+
+private:
+    pattern_alignment_e alignment_;
+    double gamma_;
+
+};
 }
 
 #endif //POLYGON_PATTERN_SYMBOLIZER_HPP

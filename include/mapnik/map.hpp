@@ -25,7 +25,7 @@
 #define MAP_HPP
 
 #ifdef HAVE_CONFIG_H
-  #include <config.h>
+#include <config.h>
 #endif
 
 // mapnik
@@ -33,328 +33,432 @@
 #include <mapnik/feature_type_style.hpp>
 #include <mapnik/datasource.hpp>
 #include <mapnik/layer.hpp>
+#include <mapnik/metawriter.hpp>
+#include <mapnik/params.hpp>
 
 // boost
 #include <boost/optional/optional.hpp>
 
 namespace mapnik
 {
-    class MAPNIK_DECL Map
-    {	
-    public:
+class MAPNIK_DECL Map
+{       
+public:
 
-        enum aspect_fix_mode 
-        {
-           // grow the width or height of the specified geo bbox to fill the map size. default behaviour.
-           GROW_BBOX,
-           // grow the width or height of the map to accomodate the specified geo bbox.
-           GROW_CANVAS,
-           // shrink the width or height of the specified geo bbox to fill the map size. 
-           SHRINK_BBOX,
-           // shrink the width or height of the map to accomodate the specified geo bbox.
-           SHRINK_CANVAS,
-           // adjust the width of the specified geo bbox, leave height and map size unchanged
-           ADJUST_BBOX_WIDTH,
-           // adjust the height of the specified geo bbox, leave width and map size unchanged
-           ADJUST_BBOX_HEIGHT,
-           // adjust the width of the map, leave height and geo bbox unchanged
-           ADJUST_CANVAS_WIDTH,
-           //adjust the height of the map, leave width and geo bbox unchanged 
-           ADJUST_CANVAS_HEIGHT,
-           // 
-           aspect_fix_mode_MAX
-        };
-        
-    private:
-        static const unsigned MIN_MAPSIZE=16;
-        static const unsigned MAX_MAPSIZE=MIN_MAPSIZE<<10;
-        unsigned width_;
-        unsigned height_;
-        std::string  srs_;
-        int buffer_size_;
-        boost::optional<color> background_;
-        std::map<std::string,feature_type_style> styles_;
-        std::map<std::string,FontSet> fontsets_;
-        std::vector<Layer> layers_;
-        aspect_fix_mode aspectFixMode_;
-        Envelope<double> currentExtent_;
-        
-    public:
-
-        typedef std::map<std::string,feature_type_style>::const_iterator const_style_iterator;
-        typedef std::map<std::string,feature_type_style>::iterator style_iterator;
-        typedef std::map<std::string,FontSet>::const_iterator const_fontset_iterator;
-        typedef std::map<std::string,FontSet>::iterator fontset_iterator;
-        
-        /*! \brief Default constructor.
-         *
-         *  Creates a map with these parameters:
-         *  - width = 400
-         *  - height = 400
-         *  - projection = "+proj=latlong +datum=WGS84"
-         */
-        Map();
-
-        /*! \brief Constructor
-         *  @param width Initial map width.
-         *  @param height Initial map height.
-         *  @param srs Initial map projection.
-         */
-        Map(int width, int height, std::string const& srs="+proj=latlong +datum=WGS84");
-
-        /*! \brief Copy Constructur.
-         *
-         *  @param rhs Map to copy from.
-         */
-        Map(const Map& rhs);
-
-        /*! \brief Assignment operator
-         *
-         *  TODO: to be documented
-         *  
-         */
-        Map& operator=(const Map& rhs);
-        
-        /*! \brief Get all styles
-         * @return Const reference to styles
-         */
-        std::map<std::string,feature_type_style> const& styles() const; 
-        
-        /*! \brief Get all styles 
-         * @return Non-constant reference to styles
-         */
-        std::map<std::string,feature_type_style> & styles();
-        
-        /*! \brief Get first iterator in styles.
-         *  @return Constant style iterator.
-         */
-        const_style_iterator begin_styles() const;
-
-        /*! \brief Get last iterator in styles.
-         *  @return Constant style iterator.
-         */
-        const_style_iterator end_styles() const;
-
-        /*! \brief Get first iterator in styles.
-         *  @return Non-constant style iterator.
-         */
-        style_iterator begin_styles();
-
-        /*! \brief Get last iterator in styles.
-         *  @return Non-constant style iterator.
-         */
-        style_iterator end_styles();
-
-        /*! \brief Insert a style in the map.
-         *  @param name The name of the style.
-         *  @param style The style to insert.
-         *  @return true If success.
-         *  @return false If no success.
-         */
-        bool insert_style(std::string const& name,feature_type_style const& style);
-
-        /*! \brief Remove a style from the map.
-         *  @param name The name of the style.
-         */
-        void remove_style(const std::string& name);
-
-        /*! \brief Find a style.
-         *  @param name The name of the style.
-         *  @return The style if found. If not found return the default map style.
-         */
-        boost::optional<feature_type_style const&> find_style(std::string const& name) const;
-        
-        /*! \brief Insert a fontset into the map.
-         *  @param name The name of the fontset.
-         *  @param style The fontset to insert.
-         *  @return true If success.
-         *  @return false If failure.
-         */
-        bool insert_fontset(std::string const& name, FontSet const& fontset);
-       
-        /*! \brief Find a fontset.
-         *  @param name The name of the fontset.
-         *  @return The fontset if found. If not found return the default map fontset.
-         */
-        FontSet const& find_fontset(std::string const& name) const;
-
-        /*! \brief Get all fontsets
-         * @return Const reference to fontsets
-         */
-        std::map<std::string,FontSet> const& fontsets() const;
-
-        /*! \brief Get all fontsets
-         * @return Non-constant reference to fontsets
-         */
-        std::map<std::string,FontSet> & fontsets();
-
-        /*! \brief Get number of all layers.
-         */
-        size_t layerCount() const;
-
-        /*! \brief Add a layer to the map.
-         *  @param l The layer to add.
-         */
-        void addLayer(const Layer& l);
-
-        /*! \brief Get a layer.
-         *  @param index Layer number.
-         *  @return Constant layer.
-         */
-        const Layer& getLayer(size_t index) const;
-
-        /*! \brief Get a layer.
-         *  @param index Layer number.
-         *  @return Non-constant layer.
-         */
-        Layer& getLayer(size_t index);
-        
-        /*! \brief Remove a layer.
-         *  @param index Layer number.
-         */
-        void removeLayer(size_t index);
-
-        /*! \brief Get all layers.
-         *  @return Constant layers.
-         */
-        std::vector<Layer> const& layers() const;
-
-        /*! \brief Get all layers.
-         *  @return Non-constant layers.
-         */
-        std::vector<Layer> & layers();
-
-        /*! \brief Remove all layers and styles from the map.
-         */
-        void remove_all();
-
-        /*! \brief Get map width.
-         */
-        unsigned getWidth() const;
-
-        /*! \brief Get map height.
-         */
-        unsigned getHeight() const;
-
-        /*! \brief Set map width.
-         */
-        void setWidth(unsigned width);
-
-        /*! \brief Set map height.
-         */
-        void setHeight(unsigned height);
-
-        /*! \brief Resize the map.
-         */
-        void resize(unsigned width,unsigned height);
-
-        /*! \brief Get the map projection.
-         *  @return Map projection.
-         */
-        std::string const& srs() const;
-
-        /*! \brief Set the map projection.
-         *  @param srs Map projection.
-         */
-        void set_srs(std::string const& srs);
-
-        /*! \brief Set the map background color.
-         *  @param c Background color.
-         */
-        void set_background(const color& c);
-
-        /*! \brief Get the map background color 
-         *  @return Background color as boost::optional
-         *  object
-         */
-        boost::optional<color> const& background() const;
-
-        /*! \brief Set buffer size 
-         *  @param buffer_size Buffer size in pixels.
-         */
-        
-        void set_buffer_size(int buffer_size);
-        
-       /*! \brief Get the map buffer size 
-         *  @return Buffer size as int
-         */
-        int buffer_size() const;
-        
-        /*! \brief Zoom the map at the current position.
-         *  @param factor The factor how much the map is zoomed in or out.
-         */
-        void zoom(double factor);
-
-        /*! \brief Zoom the map to a bounding box. 
-         *
-         *  Aspect is handled automatic if not fitting to width/height.
-         *  @param box The bounding box where to zoom.
-         */
-        void zoomToBox(const Envelope<double>& box);
-
-        /*! \brief Zoom the map to show all data.
-         */
-        void zoom_all();
-
-        void pan(int x,int y);
-
-        void pan_and_zoom(int x,int y,double zoom);
-
-        /*! \brief Get current bounding box.
-         *  @return The current bounding box.
-         */
-        const Envelope<double>& getCurrentExtent() const;
-
-        /*! \brief Get current buffered bounding box.
-         *  @return The current buffered bounding box.
-         */
-        Envelope<double> get_buffered_extent() const;
-        
-        /*!
-         * @return The Map Scale.
-         */
-        double scale() const;
-        
-        double scale_denominator() const;
-
-        CoordTransform view_transform() const;
-        
-        /*!
-         * @brief Query a Map Layer (by layer index) for features
-         *
-         * Intersecting the given x,y location in the coordinates
-         * of map projection.
-         *
-         * @param index The index of the layer to query from.
-         * @param x The x coordinate where to query.
-         * @param y The y coordinate where to query.
-         * @return A Mapnik Featureset if successful otherwise will return NULL.
-         */
-        featureset_ptr query_point(unsigned index, double x, double y) const;
-
-        /*!
-         * @brief Query a Map Layer (by layer index) for features
-         *
-         * Intersecting the given x,y location in the coordinates
-         * of the pixmap or map surface.
-         *
-         * @param index The index of the layer to query from.
-         * @param x The x coordinate where to query.
-         * @param y The y coordinate where to query.
-         * @return A Mapnik Featureset if successful otherwise will return NULL.
-         */
-        featureset_ptr query_map_point(unsigned index, double x, double y) const;
-        
-        ~Map();
-
-        inline void setAspectFixMode(aspect_fix_mode afm) { aspectFixMode_ = afm; }
-        inline aspect_fix_mode getAspectFixMode() const { return aspectFixMode_; }
-
-    private:
-        void fixAspectRatio();
+    enum aspect_fix_mode 
+    {
+        // grow the width or height of the specified geo bbox to fill the map size. default behaviour.
+        GROW_BBOX,
+        // grow the width or height of the map to accomodate the specified geo bbox.
+        GROW_CANVAS,
+        // shrink the width or height of the specified geo bbox to fill the map size. 
+        SHRINK_BBOX,
+        // shrink the width or height of the map to accomodate the specified geo bbox.
+        SHRINK_CANVAS,
+        // adjust the width of the specified geo bbox, leave height and map size unchanged
+        ADJUST_BBOX_WIDTH,
+        // adjust the height of the specified geo bbox, leave width and map size unchanged
+        ADJUST_BBOX_HEIGHT,
+        // adjust the width of the map, leave height and geo bbox unchanged
+        ADJUST_CANVAS_WIDTH,
+        //adjust the height of the map, leave width and geo bbox unchanged 
+        ADJUST_CANVAS_HEIGHT,
+        // 
+        aspect_fix_mode_MAX
     };
+        
+private:
+    static const unsigned MIN_MAPSIZE=16;
+    static const unsigned MAX_MAPSIZE=MIN_MAPSIZE<<10;
+    unsigned width_;
+    unsigned height_;
+    std::string srs_;
+    int buffer_size_;
+    boost::optional<color> background_;
+    boost::optional<std::string> background_image_;
+    std::map<std::string,feature_type_style> styles_;
+    std::map<std::string,metawriter_ptr> metawriters_;
+    std::map<std::string,font_set> fontsets_;
+    std::vector<layer> layers_;
+    aspect_fix_mode aspectFixMode_;
+    box2d<double> current_extent_;
+    boost::optional<box2d<double> > maximum_extent_;
+    std::string base_path_;
+    parameters extra_attr_;
+        
+public:
+
+    typedef std::map<std::string,feature_type_style>::const_iterator const_style_iterator;
+    typedef std::map<std::string,feature_type_style>::iterator style_iterator;
+    typedef std::map<std::string,font_set>::const_iterator const_fontset_iterator;
+    typedef std::map<std::string,font_set>::iterator fontset_iterator;
+    typedef std::map<std::string,metawriter_ptr>::const_iterator const_metawriter_iterator;
+        
+    /*! \brief Default constructor.
+     *
+     *  Creates a map with these parameters:
+     *  - width = 400
+     *  - height = 400
+     *  - projection = "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs"
+     */
+    Map();
+
+    /*! \brief Constructor
+     *  @param width Initial map width.
+     *  @param height Initial map height.
+     *  @param srs Initial map projection.
+     */
+    Map(int width, int height, std::string const& srs="+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs");
+
+    /*! \brief Copy Constructur.
+     *
+     *  @param rhs Map to copy from.
+     */
+    Map(const Map& rhs);
+
+    /*! \brief Assignment operator
+     *
+     *  TODO: to be documented
+     *  
+     */
+    Map& operator=(const Map& rhs);
+        
+    /*! \brief Get all styles
+     * @return Const reference to styles
+     */
+    std::map<std::string,feature_type_style> const& styles() const; 
+        
+    /*! \brief Get all styles 
+     * @return Non-constant reference to styles
+     */
+    std::map<std::string,feature_type_style> & styles();
+        
+    /*! \brief Get first iterator in styles.
+     *  @return Constant style iterator.
+     */
+    const_style_iterator begin_styles() const;
+
+    /*! \brief Get last iterator in styles.
+     *  @return Constant style iterator.
+     */
+    const_style_iterator end_styles() const;
+
+    /*! \brief Get first iterator in styles.
+     *  @return Non-constant style iterator.
+     */
+    style_iterator begin_styles();
+
+    /*! \brief Get last iterator in styles.
+     *  @return Non-constant style iterator.
+     */
+    style_iterator end_styles();
+
+    /*! \brief Insert a style in the map.
+     *  @param name The name of the style.
+     *  @param style The style to insert.
+     *  @return true If success.
+     *  @return false If no success.
+     */
+    bool insert_style(std::string const& name,feature_type_style const& style);
+
+    /*! \brief Remove a style from the map.
+     *  @param name The name of the style.
+     */
+    void remove_style(const std::string& name);
+
+    /*! \brief Find a style.
+     *  @param name The name of the style.
+     *  @return The style if found. If not found return the default map style.
+     */
+    boost::optional<feature_type_style const&> find_style(std::string const& name) const;
+
+    /*! \brief Insert a metawriter in the map.
+     *  @param name The name of the writer.
+     *  @param style A pointer to the writer to insert.
+     *  @return true If success.
+     *  @return false If no success.
+     */
+    bool insert_metawriter(std::string const& name, metawriter_ptr const& writer);
+
+    /*! \brief Remove a metawriter from the map.
+     *  @param name The name of the writer.
+     */
+    void remove_metawriter(const std::string& name);
+
+    /*! \brief Find a metawriter.
+     *  @param name The name of the writer.
+     *  @return The writer if found. If not found return 0.
+     */
+    metawriter_ptr find_metawriter(std::string const& name) const;
+
+    /*! \brief Get all metawriters.
+     *  @return Const reference to metawriters.
+     */
+    std::map<std::string,metawriter_ptr> const& metawriters() const;
+
+    /*! \brief Get first iterator in metawriters.
+     *  @return Constant metawriter iterator.
+     */
+    const_metawriter_iterator begin_metawriters() const;
+
+    /*! \brief Get last iterator in metawriters.
+     *  @return Constant metawriter iterator.
+     */
+    const_metawriter_iterator end_metawriters() const;
+        
+    /*! \brief Insert a fontset into the map.
+     *  @param name The name of the fontset.
+     *  @param style The fontset to insert.
+     *  @return true If success.
+     *  @return false If failure.
+     */
+    bool insert_fontset(std::string const& name, font_set const& fontset);
+       
+    /*! \brief Find a fontset.
+     *  @param name The name of the fontset.
+     *  @return The fontset if found. If not found return the default map fontset.
+     */
+    font_set const& find_fontset(std::string const& name) const;
+
+    /*! \brief Get all fontsets
+     * @return Const reference to fontsets
+     */
+    std::map<std::string,font_set> const& fontsets() const;
+
+    /*! \brief Get all fontsets
+     * @return Non-constant reference to fontsets
+     */
+    std::map<std::string,font_set> & fontsets();
+
+    /*! \brief Get number of all layers.
+     */
+    size_t layer_count() const;
+
+    /*! \brief Add a layer to the map.
+     *  @param l The layer to add.
+     */
+    void addLayer(const layer& l);
+
+    /*! \brief Get a layer.
+     *  @param index layer number.
+     *  @return Constant layer.
+     */
+    const layer& getLayer(size_t index) const;
+
+    /*! \brief Get a layer.
+     *  @param index layer number.
+     *  @return Non-constant layer.
+     */
+    layer& getLayer(size_t index);
+        
+    /*! \brief Remove a layer.
+     *  @param index layer number.
+     */
+    void removeLayer(size_t index);
+
+    /*! \brief Get all layers.
+     *  @return Constant layers.
+     */
+    std::vector<layer> const& layers() const;
+
+    /*! \brief Get all layers.
+     *  @return Non-constant layers.
+     */
+    std::vector<layer> & layers();
+
+    /*! \brief Remove all layers and styles from the map.
+     */
+    void remove_all();
+
+    /*! \brief Get map width.
+     */
+    unsigned width() const;
+
+    /*! \brief Get map height.
+     */
+    unsigned height() const;
+
+    /*! \brief Set map width.
+     */
+    void set_width(unsigned width);
+
+    /*! \brief Set map height.
+     */
+    void set_height(unsigned height);
+
+    /*! \brief Resize the map.
+     */
+    void resize(unsigned width,unsigned height);
+
+    /*! \brief Get the map projection.
+     *  @return Map projection.
+     */
+    std::string const& srs() const;
+
+    /*! \brief Set the map projection.
+     *  @param srs Map projection.
+     */
+    void set_srs(std::string const& srs);
+
+    /*! \brief Set the map background color.
+     *  @param c Background color.
+     */
+    void set_background(const color& c);
+    
+    /*! \brief Get the map background color 
+     *  @return Background color as boost::optional
+     *  object
+     */
+    boost::optional<color> const& background() const;
+    
+    /*! \brief Set the map background image filename.
+     *  @param c Background image filename.
+     */
+    void set_background_image(std::string const& image_filename);
+    
+    /*! \brief Get the map background image
+     *  @return Background image path as std::string
+     *  object
+     */
+    boost::optional<std::string> const& background_image() const;
+    
+    /*! \brief Set buffer size 
+     *  @param buffer_size Buffer size in pixels.
+     */
+        
+    void set_buffer_size(int buffer_size);
+        
+    /*! \brief Get the map buffer size 
+     *  @return Buffer size as int
+     */
+    int buffer_size() const;
+
+    /*! \brief Set the map maximum extent.
+     *  @param box The bounding box for the maximum extent.
+     */
+    void set_maximum_extent(box2d<double>const& box);
+        
+    /*! \brief Get the map maximum extent as box2d<double>
+    */
+    boost::optional<box2d<double> > const& maximum_extent() const;
+
+    /*! \brief Get the map base path where paths should be relative to.
+     */
+    std::string const& base_path() const;
+
+    /*! \brief Set the map base path where paths should be releative to.
+     *  @param srs Map base_path.
+     */
+    void set_base_path(std::string const& base);
+
+    /*! \brief Zoom the map at the current position.
+     *  @param factor The factor how much the map is zoomed in or out.
+     */
+    void zoom(double factor);
+
+    /*! \brief Zoom the map to a bounding box. 
+     *
+     *  Aspect is handled automatic if not fitting to width/height.
+     *  @param box The bounding box where to zoom.
+     */
+    void zoom_to_box(const box2d<double>& box);
+
+    /*! \brief Zoom the map to show all data.
+     */
+    void zoom_all();
+
+    void pan(int x,int y);
+
+    void pan_and_zoom(int x,int y,double zoom);
+
+    /*! \brief Get current bounding box.
+     *  @return The current bounding box.
+     */
+    const box2d<double>& get_current_extent() const;
+
+    /*! \brief Get current buffered bounding box.
+     *  @return The current buffered bounding box.
+     */
+    box2d<double> get_buffered_extent() const;
+        
+    /*!
+     * @return The Map Scale.
+     */
+    double scale() const;
+        
+    double scale_denominator() const;
+
+    CoordTransform view_transform() const;
+        
+    /*!
+     * @brief Query a Map layer (by layer index) for features
+     *
+     * Intersecting the given x,y location in the coordinates
+     * of map projection.
+     *
+     * @param index The index of the layer to query from.
+     * @param x The x coordinate where to query.
+     * @param y The y coordinate where to query.
+     * @return A Mapnik Featureset if successful otherwise will return NULL.
+     */
+    featureset_ptr query_point(unsigned index, double x, double y) const;
+
+    /*!
+     * @brief Query a Map layer (by layer index) for features
+     *
+     * Intersecting the given x,y location in the coordinates
+     * of the pixmap or map surface.
+     *
+     * @param index The index of the layer to query from.
+     * @param x The x coordinate where to query.
+     * @param y The y coordinate where to query.
+     * @return A Mapnik Featureset if successful otherwise will return NULL.
+     */
+    featureset_ptr query_map_point(unsigned index, double x, double y) const;
+
+    /*!
+     * @brief Resolve names to object references for metawriters.
+     */
+    void init_metawriters();
+        
+    ~Map();
+
+    inline void set_aspect_fix_mode(aspect_fix_mode afm) { aspectFixMode_ = afm; }
+    inline aspect_fix_mode get_aspect_fix_mode() const { return aspectFixMode_; }
+
+    /*!
+     * @brief Metawriter properties.
+     *
+     * These properties are defined by the user and are substituted in filenames,
+     * sepcial columns in tables, etc.
+     */
+    metawriter_property_map metawriter_output_properties;
+
+    /*!
+     * @brief Set a metawriter property.
+     */
+    void set_metawriter_property(std::string name, std::string value);
+
+    /*!
+     * @brief Get a metawriter property.
+     */
+    std::string get_metawriter_property(std::string name) const;
+
+    /*!
+     * @brief Get extra properties that can be carried on the Map
+     */
+    parameters const& get_extra_attributes() const;
+
+    /*!
+     * @brief Set extra properties that can be carried on the Map
+     */
+    void set_extra_attributes(parameters& params);
+
+private:
+    void fixAspectRatio();
+};
    
-   DEFINE_ENUM(aspect_fix_mode_e,Map::aspect_fix_mode);
+DEFINE_ENUM(aspect_fix_mode_e,Map::aspect_fix_mode);
 }
 
 #endif //MAP_HPP

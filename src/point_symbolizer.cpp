@@ -23,41 +23,40 @@
 //$Id$
 // mapnik
 #include <mapnik/point_symbolizer.hpp>
-
-#include <mapnik/image_data.hpp>
-#include <mapnik/image_reader.hpp>
-// boost
-#include <boost/scoped_ptr.hpp>
-// stl
-#include <iostream>
+#include <mapnik/enumeration.hpp>
 
 namespace mapnik
 {
+
+static const char * point_placement_strings[] = {
+    "centroid",
+    "interior",
+    ""
+};
+
+IMPLEMENT_ENUM( point_placement_e, point_placement_strings )
+
 point_symbolizer::point_symbolizer()
-    : symbolizer_with_image(boost::shared_ptr<ImageData32>(new ImageData32(4,4))),
-      opacity_(1.0),
-      overlap_(false)
-          
-{
-    //default point symbol is black 4x4px square
-    image_->set(0xff000000);
-}
+    : symbolizer_with_image(path_expression_ptr(new path_expression)), // FIXME
+      symbolizer_base(),
+      overlap_(false),
+      point_p_(CENTROID_POINT_PLACEMENT),
+      ignore_placement_(false) {}
     
-point_symbolizer::point_symbolizer(std::string const& file,
-				   std::string const& type,
-				   unsigned width,unsigned height) 
-    : symbolizer_with_image(file, type, width, height),
-      opacity_(1.0),      
-      overlap_(false)
-          
-{ }
-    
+point_symbolizer::point_symbolizer(path_expression_ptr file) 
+    : symbolizer_with_image(file),
+      symbolizer_base(),
+      overlap_(false),
+      point_p_(CENTROID_POINT_PLACEMENT),
+      ignore_placement_(false) {}
+
 point_symbolizer::point_symbolizer(point_symbolizer const& rhs)
     : symbolizer_with_image(rhs),
-      opacity_(rhs.opacity_),
-      overlap_(rhs.overlap_)
-{}
-    
+      symbolizer_base(rhs),
+      overlap_(rhs.overlap_),
+      point_p_(rhs.point_p_),
+      ignore_placement_(rhs.ignore_placement_) {}
+
 void point_symbolizer::set_allow_overlap(bool overlap)
 {
     overlap_ = overlap;
@@ -68,14 +67,24 @@ bool point_symbolizer::get_allow_overlap() const
     return overlap_;
 }
 
-void point_symbolizer::set_opacity(float opacity)
+void point_symbolizer::set_point_placement(point_placement_e point_p)
 {
-    opacity_ = opacity;
+    point_p_ = point_p;
 }
 
-float point_symbolizer::get_opacity() const
+point_placement_e point_symbolizer::get_point_placement() const
 {
-    return opacity_;
+    return point_p_;
+}
+
+void point_symbolizer::set_ignore_placement(bool ignore_placement)
+{
+    ignore_placement_ = ignore_placement;
+}
+    
+bool point_symbolizer::get_ignore_placement() const
+{
+    return ignore_placement_;
 }
 
 }

@@ -23,10 +23,11 @@ Boost Python bindings to the Mapnik C++ shared library.
 
 Several things happen when you do:
 
-    >>> import mapnik
+    >>> import mapnik2
 
  1) Mapnik C++ objects are imported via the '__init__.py' from the '_mapnik.so' shared object
-    which references libmapnik.so (linux), libmapnik.dylib (mac), or libmapnik.dll (win).
+    (_mapnik.pyd on win) which references libmapnik.so (linux), libmapnik.dylib (mac), or
+    mapnik.dll (win32).
 
  2) The paths to the input plugins and font directories are imported from the 'paths.py'
     file which was constructed and installed during SCons installation.
@@ -39,31 +40,42 @@ Several things happen when you do:
 """
 
 import os
+import sys
+import warnings
 
-from sys import getdlopenflags, setdlopenflags
-try:
-    from ctypes import RTLD_NOW, RTLD_GLOBAL
-except ImportError:
-    RTLD_NOW = 2
-    RTLD_GLOBAL = 256
-
-flags = getdlopenflags()
-setdlopenflags(RTLD_NOW | RTLD_GLOBAL)
-
-from _mapnik import *
+from _mapnik2 import *
 from paths import inputpluginspath, fontscollectionpath
+
+import printing
+printing.renderer = render
 
 # The base Boost.Python class
 BoostPythonMetaclass = Coord.__class__
 
-class _injector(object):
-    class __metaclass__(BoostPythonMetaclass):
-        def __init__(self, name, bases, dict):
-            for b in bases:
-                if type(b) not in (self, type):
-                    for k,v in dict.items():
-                        setattr(b,k,v)
-            return type.__init__(self, name, bases, dict)
+class _MapnikMetaclass(BoostPythonMetaclass):
+    def __init__(self, name, bases, dict):
+        for b in bases:
+            if type(b) not in (self, type):
+                for k,v in list(dict.items()):
+                    if hasattr(b, k):
+                        setattr(b, '_c_'+k, getattr(b, k))
+                    setattr(b,k,v)
+        return type.__init__(self, name, bases, dict)
+
+# metaclass injector compatible with both python 2 and 3
+# http://mikewatkins.ca/2008/11/29/python-2-and-3-metaclasses/
+_injector = _MapnikMetaclass('_injector', (object, ), {})
+
+def Filter(*args,**kwargs):
+    warnings.warn("'Filter' is deprecated and will be removed in Mapnik 2.0.1, use 'Expression' instead",
+    DeprecationWarning, 2)
+    return Expression(*args, **kwargs)
+
+class Envelope(Box2d):
+    def __init__(self, *args, **kwargs):
+        warnings.warn("'Envelope' is deprecated and will be removed in Mapnik 2.0.1, use 'Box2d' instead",
+        DeprecationWarning, 2)
+        Box2d.__init__(self, *args, **kwargs)
 
 class _Coord(Coord,_injector):
     """
@@ -138,12 +150,12 @@ class _Coord(Coord,_injector):
         """
         return inverse_(self, projection)
 
-class _Envelope(Envelope,_injector):
+class _Box2d(Box2d,_injector):
     """
     Represents a spatial envelope (i.e. bounding box). 
     
     
-    Following operators are defined for Envelope:
+    Following operators are defined for Box2d:
 
     Addition:
     e1 + e2 is equvalent to e1.expand_to_include(e2) but yields 
@@ -165,9 +177,11 @@ class _Envelope(Envelope,_injector):
 
     Equality: two envelopes are equal if their corner points are equal.
     """
+
     def __repr__(self):
-        return 'Envelope(%s,%s,%s,%s)' % \
+        return 'Box2d(%s,%s,%s,%s)' % \
             (self.minx,self.miny,self.maxx,self.maxy)
+
     def forward(self, projection):
         """
         Projects the envelope from the geographic space 
@@ -178,6 +192,7 @@ class _Envelope(Envelope,_injector):
            Coord.forward(self, projection)
         """
         return forward_(self, projection)
+
     def inverse(self, projection):
         """
         Projects the envelope from the cartesian space 
@@ -190,69 +205,115 @@ class _Envelope(Envelope,_injector):
         return inverse_(self, projection)
 
 class _Projection(Projection,_injector):
+
     def __repr__(self):
         return "Projection('%s')" % self.params()
+
     def forward(self,obj):
         """
-        Projects the given object (Envelope or Coord) 
+        Projects the given object (Box2d or Coord) 
         from the geographic space into the cartesian space.
 
         See also:
-          Envelope.forward(self, projection),
+          Box2d.forward(self, projection),
           Coord.forward(self, projection).
         """
         return forward_(obj,self)
+
     def inverse(self,obj):
         """
-        Projects the given object (Envelope or Coord) 
+        Projects the given object (Box2d or Coord) 
         from the cartesian space into the geographic space.
 
         See also:
-          Envelope.inverse(self, projection),
+          Box2d.inverse(self, projection),
           Coord.inverse(self, projection).
         """
         return inverse_(obj,self)
 
-def get_types(num):
-    dispatch = {1: int,
-                2: float,
-                3: float,
-                4: str,
-                5: Geometry2d,
-                6: object}
-    return dispatch.get(num)
-
 class _Datasource(Datasource,_injector):
+
     def describe(self):
         return Describe(self)
-    def field_types(self):
-        return map(get_types,self._field_types())
-    def all_features(self):
-        query = Query(self.envelope(),1.0)
-        for fld in self.fields():
+
+    def all_features(self,fields=None):
+        query = Query(self.envelope())
+        attributes = fields or self.fields()
+        for fld in attributes:
             query.add_property_name(fld)
         return self.features(query).features
 
-class _Feature(Feature,_injector):
+    def featureset(self,fields=None):
+        query = Query(self.envelope())
+        attributes = fields or self.fields()
+        for fld in attributes:
+            query.add_property_name(fld)
+        return self.features(query)
+
+class _DeprecatedFeatureProperties(object):
+
+    def __init__(self, feature):
+        self._feature = feature
+
+    def __getitem__(self, name):
+        warnings.warn("indexing feature.properties is deprecated, index the "
+             "feature object itself for the same effect", DeprecationWarning, 2)
+        return self._feature[name]
+
+    def __iter__(self):
+        warnings.warn("iterating feature.properties is deprecated, iterate the "
+             "feature object itself for the same effect", DeprecationWarning, 2)
+        return iter(self._feature)
+
+class _Feature(Feature, _injector):
+    """
+    A Feature.
+
+    TODO: docs
+    """
+    @property
+    def properties(self):
+        return _DeprecatedFeatureProperties(self)
+
     @property
     def attributes(self):
-        attr = {}
-        for prop in self.properties:
-            attr[prop[0]] = prop[1]
-        return attr
+        #XXX Returns a copy! changes to it won't affect feat.'s attrs.
+        #    maybe deprecate?
+        return dict(self)
+    
+    def __init__(self, id, wkt=None, **properties):
+        Feature._c___init__(self, id)
+        if wkt is not None:
+            self.add_geometries_from_wkt(wkt)
+        for k, v in properties.iteritems():
+            self[k] = v
+    
+class _Color(Color,_injector):
+    def __repr__(self):
+        return "Color(R=%d,G=%d,B=%d,A=%d)" % (self.r,self.g,self.b,self.a)
 
-class _Symbolizer(Symbolizer,_injector):
-    def symbol(self):
+class _Symbolizers(Symbolizers,_injector):
+
+    def __getitem__(self, idx):
+        sym = Symbolizers._c___getitem__(self, idx)
+        return sym.symbol()
+
+def _add_symbol_method_to_symbolizers(vars=globals()):
+
+    def symbol_for_subcls(self):
+        return self
+
+    def symbol_for_cls(self):
         return getattr(self,self.type())()
 
-#class _Filter(Filter,_injector):
-#    """Mapnik Filter expression.
-#    
-#    Usage:
-#    >>> from mapnik import Filter
-#    >>> Filter("[waterway]='canal' and not ([tunnel] = 'yes' or [tunnel] ='true')")
-#    
-#    """
+    for name, obj in vars.items():
+        if name.endswith('Symbolizer') and not name.startswith('_'):
+            if name == 'Symbolizer':
+                symbol = symbol_for_cls
+            else:
+                symbol = symbol_for_subcls
+            type('dummy', (obj,_injector), {'symbol': symbol})
+_add_symbol_method_to_symbolizers()
 
 def Datasource(**keywords):
     """Wrapper around CreateDatasource.
@@ -334,6 +395,7 @@ def PostGIS(**keywords):
     keywords['type'] = 'postgis'
     return CreateDatasource(keywords)
 
+
 def Raster(**keywords):
     """Create a Raster (Tiff) Datasource.
 
@@ -344,7 +406,7 @@ def Raster(**keywords):
       hix -- highest (max) x/longitude of tiff extent
       hiy -- highest (max) y/latitude of tiff extent
 
-    Hint: lox,loy,hix,hiy make a Mapnik Envelope
+    Hint: lox,loy,hix,hiy make a Mapnik Box2d
 
     Optional keyword arguments:
       base -- path prefix (default None)
@@ -367,6 +429,7 @@ def Gdal(**keywords):
     Optional keyword arguments:
       base -- path prefix (default None)
       shared -- boolean, open GdalDataset in shared mode (default: False)
+      bbox -- tuple (minx, miny, maxx, maxy). If specified, overrides the bbox detected by GDAL.
 
     >>> from mapnik import Gdal, Layer
     >>> dataset = Gdal(base='/home/mapnik/data',file='elevation.tif')
@@ -375,6 +438,9 @@ def Gdal(**keywords):
 
     """
     keywords['type'] = 'gdal'
+    if 'bbox' in keywords:
+        if isinstance(keywords['bbox'], (tuple, list)):
+            keywords['bbox'] = ','.join([str(item) for item in keywords['bbox']])
     return CreateDatasource(keywords)
 
 def Occi(**keywords):
@@ -412,9 +478,10 @@ def Ogr(**keywords):
 
     Required keyword arguments:
       file -- path to OGR supported dataset
-      layer -- layer to use within datasource
+      layer -- name of layer to use within datasource (optional if layer_by_index is used)
 
     Optional keyword arguments:
+      layer_by_index -- choose layer by index number instead of by layer name.
       base -- path prefix (default None)
       encoding -- file encoding (default 'utf-8')
       multiple_geometries -- boolean, direct the Mapnik wkb reader to interpret as multigeometries (default False)
@@ -455,6 +522,26 @@ def SQLite(**keywords):
 
     """
     keywords['type'] = 'sqlite'
+    return CreateDatasource(keywords)
+
+def Rasterlite(**keywords):
+    """Create a Rasterlite Datasource.
+
+    Required keyword arguments:
+      file -- path to Rasterlite database file
+      table -- table name or subselect query
+
+    Optional keyword arguments:
+      base -- path prefix (default None)
+      extent -- manually specified data extent (comma delimited string, default None)
+
+    >>> from mapnik import Rasterlite, Layer
+    >>> rasterlite = Rasterlite(base='/home/mapnik/data',file='osm.db',table='osm',extent='-20037508,-19929239,20037508,19929239') 
+    >>> lyr = Layer('Rasterlite Layer')
+    >>> lyr.datasource = rasterlite
+
+    """
+    keywords['type'] = 'rasterlite'
     return CreateDatasource(keywords)
 
 def Osm(**keywords):
@@ -499,81 +586,150 @@ def Kismet(**keywords):
     keywords['type'] = 'kismet'
     return CreateDatasource(keywords)
 
-def mapnik_version_string():
+def Geos(**keywords):
+    """Create a GEOS Vector Datasource.
+
+    Required keyword arguments:
+      wkt -- inline WKT text of the geometry
+
+    Optional keyword arguments:
+      multiple_geometries -- boolean, direct the GEOS wkt reader to interpret as multigeometries (default False)
+      extent -- manually specified data extent (comma delimited string, default None)
+
+    >>> from mapnik import Geos, Layer
+    >>> datasource = Geos(wkt='MULTIPOINT(100 100, 50 50, 0 0)') 
+    >>> lyr = Layer('GEOS Layer from WKT string')
+    >>> lyr.datasource = datasource
+
+    """
+    keywords['type'] = 'geos'
+    return CreateDatasource(keywords)
+
+def mapnik_version_string(version=mapnik_version()):
     """Return the Mapnik version as a string."""
-    version = mapnik_version()
     patch_level = version % 100
     minor_version = version / 100 % 1000
     major_version = version / 100000
     return '%s.%s.%s' % ( major_version, minor_version,patch_level)
 
+def mapnik_version_from_string(version_string):
+    """Return the Mapnik version from a string."""
+    n = version_string.split('.')
+    return (int(n[0]) * 100000) + (int(n[1]) * 100) + (int(n[2]));
+
 def register_plugins(path=inputpluginspath):
     """Register plugins located by specified path"""
     DatasourceCache.instance().register_datasources(path)
 
-def register_fonts(path=fontscollectionpath):
+def register_fonts(path=fontscollectionpath,valid_extensions=['.ttf','.otf','.ttc','.pfa','.pfb','.ttc','.dfont']):
     """Recursively register fonts using path argument as base directory"""
     for dirpath, _, filenames in os.walk(path):
         for filename in filenames:
-            if os.path.splitext(filename)[1] == '.ttf':
+            if os.path.splitext(filename.lower())[1] in valid_extensions:
                 FontEngine.instance().register_font(os.path.join(dirpath, filename))
 
 # auto-register known plugins and fonts
 register_plugins()
 register_fonts()
 
-#set dlopen flags back to the original
-setdlopenflags(flags)
-
 # Explicitly export API members to avoid namespace pollution
 # and ensure correct documentation processing
 __all__ = [
     # classes
-    'Color', 'Coord', 
+    'Color',
+    'Coord',
+    'Palette',
+    #'ColorBand',
+    'CompositeOp',
     'DatasourceCache',
-    'Envelope',
-    'Feature', 'Featureset', 'FontEngine',
+    'MemoryDatasource',
+    'Box2d',
+    'Feature',
+    'Featureset',
+    'FontEngine',
     'Geometry2d',
-    'Image', 'ImageView',
-    'Layer', 'Layers',
-    'LinePatternSymbolizer', 'LineSymbolizer',
+    'GlyphSymbolizer',
+    'Image',
+    'ImageView',
+    'Grid',
+    'GridView',
+    'Layer',
+    'Layers',
+    'LinePatternSymbolizer',
+    'LineSymbolizer',
     'Map',
+    'MarkersSymbolizer',
     'Names',
-    'Parameter', 'Parameters',
-    'PointDatasource', 'PointSymbolizer',
-    'PolygonPatternSymbolizer', 'PolygonSymbolizer',
+    'Path',
+    'Parameter',
+    'Parameters',
+    'PointDatasource',
+    'PointSymbolizer',
+    'PolygonPatternSymbolizer',
+    'PolygonSymbolizer',
     'ProjTransform',
     'Projection',
-    'Properties',
     'Query',
     'RasterSymbolizer',
+    'RasterColorizer',
     'Rule', 'Rules',
     'ShieldSymbolizer',
     'Singleton',
-    'Stroke', 'Style',
-    'Symbolizer', 'Symbolizers',
+    'Stroke',
+    'Style',
+    'Symbolizer',
+    'Symbolizers',
     'TextSymbolizer',
     'ViewTransform',
     # enums
-    'aspect_fix_mode', 'label_placement',
-    'line_cap', 'line_join',
-    'text_convert', 'vertical_alignment',
+    'aspect_fix_mode',
+    'point_placement',
+    'label_placement',
+    'line_cap',
+    'line_join',
+    'text_transform',
+    'vertical_alignment',
+    'horizontal_alignment',
+    'justify_alignment',
+    'pattern_alignment',
+    'filter_mode',
     # functions
     # datasources
-    'Datasource', 'CreateDatasource',
-    'Shapefile', 'PostGIS', 'Raster', 'Gdal',
-    'Occi', 'Ogr', 'SQLite',
-    'Osm', 'Kismet',
+    'Datasource',
+    'CreateDatasource',
+    'Shapefile',
+    'PostGIS',
+    'Raster',
+    'Gdal',
+    'Occi',
+    'Ogr',
+    'SQLite',
+    'Osm',
+    'Kismet',
     'Describe',
     #   version and environment
-    'mapnik_version_string', 'mapnik_version', 'mapnik_svn_revision',
-    'has_cairo', 'has_pycairo',
+    'mapnik_version_string',
+    'mapnik_version',
+    'mapnik_svn_revision',
+    'has_cairo',
+    'has_pycairo',
     #   factory methods
-    'Filter',
+    'Expression',
+    'PathExpression',
     #   load/save/render
-    'load_map', 'load_map_from_string', 'save_map', 'save_map_to_string',
-    'render', 'render_tile_to_file', 'render_to_file',
+    'load_map',
+    'load_map_from_string',
+    'save_map',
+    'save_map_to_string',
+    'render',
+    'render_grid',
+    'render_tile_to_file',
+    'render_to_file',
     #   other
-    'register_plugins', 'register_fonts',
+    'register_plugins',
+    'register_fonts',
     'scale_denominator',
+    # deprecated
+    'Filter',
+    'Envelope',
     ]

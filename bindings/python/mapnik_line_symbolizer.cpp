@@ -22,19 +22,21 @@
 //$Id$
 
 #include <boost/python.hpp>
+#include "mapnik_enumeration.hpp"
 #include <mapnik/line_symbolizer.hpp>
 
+using namespace mapnik;
 using mapnik::line_symbolizer;
 using mapnik::stroke;
 using mapnik::color;
 
 struct line_symbolizer_pickle_suite : boost::python::pickle_suite
 {
-   static boost::python::tuple
-   getinitargs(const line_symbolizer& l)
-   {
-      return boost::python::make_tuple(l.get_stroke());
-   }
+    static boost::python::tuple
+    getinitargs(const line_symbolizer& l)
+    {
+        return boost::python::make_tuple(l.get_stroke());
+    }
 
 };
 
@@ -42,14 +44,23 @@ void export_line_symbolizer()
 {
     using namespace boost::python;
     
+    enumeration_<line_rasterizer_e>("line_rasterizer")
+        .value("FULL",RASTERIZER_FULL)
+        .value("FAST",RASTERIZER_FAST)
+        ;
+
     class_<line_symbolizer>("LineSymbolizer",
                             init<>("Default LineSymbolizer - 1px solid black"))
         .def(init<stroke const&>("TODO"))
         .def(init<color const& ,float>())
         .def_pickle(line_symbolizer_pickle_suite())
+        .add_property("rasterizer",
+                      &line_symbolizer::get_rasterizer,
+                      &line_symbolizer::set_rasterizer,
+                      "Set/get the rasterization method of the line of the point")
         .add_property("stroke",make_function
                       (&line_symbolizer::get_stroke,
                        return_value_policy<copy_const_reference>()),
                       &line_symbolizer::set_stroke)
-	;    
+        ;    
 }

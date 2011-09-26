@@ -17,6 +17,12 @@
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
-# $Id: __init__.py 1033 2009-03-30 04:25:01Z dane $
+# $Id: __init__.py 2796 2011-04-19 00:20:50Z dane $
 
 """Mapnik OGC WMS Server."""
+
+import os
+import warnings
+
+warnings.warn("ogcserver module development has moved to https://github.com/mapnik/OGCServer.\n This code will function fine with this version, but will be removed in Mapnik 2.1.0. Disable this warning by editing this file: %s" % os.path.realpath(__file__), DeprecationWarning, 2)
+

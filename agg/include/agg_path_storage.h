@@ -148,7 +148,7 @@ namespace agg
             unsigned cmd = v.vertex(i, &x, &y);
             add_vertex(x, y, cmd);
         }
-	    return *this;
+        return *this;
     }
 
     //------------------------------------------------------------------------
@@ -720,7 +720,8 @@ namespace agg
         template<class VertexSource> 
         void concat_path(VertexSource& vs, unsigned path_id = 0)
         {
-            double x, y;
+            double x=0;
+            double y=0;
             unsigned cmd;
             vs.rewind(path_id);
             while(!is_stop(cmd = vs.vertex(&x, &y)))
@@ -865,6 +866,12 @@ namespace agg
             double x2;
             double y2;
             if(is_vertex(m_vertices.last_vertex(&x2, &y2)))
+            {
+                *x += x2;
+                *y += y2;
+            }
+            else if (!is_stop(m_vertices.last_command()) && 
+                     is_vertex(m_vertices.prev_vertex(&x2, &y2)))
             {
                 *x += x2;
                 *y += y2;
@@ -1417,6 +1424,10 @@ namespace agg
         }
     }
 
+////////////////////////////////////////////////////////////////////////////////
+
+
+
     //-----------------------------------------------------vertex_stl_storage
     template<class Container> class vertex_stl_storage
     {
@@ -1533,13 +1544,12 @@ namespace agg
 
 // Example of declarations path_storage with std::vector as a container
 //---------------------------------------------------------------------------
-//#include <vector>
-//namespace agg
-//{
-//    typedef path_base<vertex_stl_storage<std::vector<vertex_d> > > stl_path_storage; 
-//}
 
-
+//#include <vector> 
+//namespace agg 
+//{ 
+//    typedef path_base<vertex_stl_storage<std::vector<vertex_d> > > path_storage;  
+//} 
 
 
 #endif

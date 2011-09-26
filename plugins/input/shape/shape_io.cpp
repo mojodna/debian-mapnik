@@ -23,32 +23,49 @@
 //$Id: shape_io.cc 26 2005-03-29 19:18:59Z pavlenko $
 
 #include "shape_io.hpp"
-#include "shape.hpp"
 
+#include <mapnik/datasource.hpp>
+
+// boost
+#include <boost/filesystem/operations.hpp>
+#include <boost/make_shared.hpp>
 
 using mapnik::datasource_exception;
+using mapnik::geometry_type;
+
 const std::string shape_io::SHP = ".shp";
 const std::string shape_io::DBF = ".dbf";
+const std::string shape_io::INDEX = ".index";
 
-shape_io::shape_io(const std::string& shape_name)
+shape_io::shape_io(const std::string& shape_name, bool open_index)
    : type_(shape_null),
      shp_(shape_name + SHP),
      dbf_(shape_name + DBF),
      reclength_(0),
      id_(0)
 {
-   bool ok = (shp_.is_open() && dbf_.is_open());
-   if (!ok)
-   { 
-      throw datasource_exception("cannot read shape file");
-   }
+    bool ok = (shp_.is_open() && dbf_.is_open());
+    if (!ok)
+    { 
+        throw datasource_exception("Shape Plugin: cannot read shape file '" + shape_name + "'");
+    }
+    if (open_index)
+    {
+        try 
+        {
+            
+            index_= boost::make_shared<shape_file>(shape_name + INDEX);
+        }
+        catch (...)
+        {
+#ifdef MAPNIK_DEBUG 
+            std::clog << "Shape Plugin: warning - could not open index: '" + shape_name + INDEX + "'" << std::endl;
+#endif
+        }
+    }
 }
 
-shape_io::~shape_io()
-{
-   shp_.close();
-   dbf_.close();
-}
+shape_io::~shape_io() {}
 
 void shape_io::move_to (int pos)
 {
@@ -56,14 +73,8 @@ void shape_io::move_to (int pos)
    id_ = shp_.read_xdr_integer();
    reclength_ = shp_.read_xdr_integer();
    type_ = shp_.read_ndr_integer();
-
-   if (shp_.is_eof()) {
-       id_ = 0;
-       reclength_ = 0;
-       type_ = shape_null;
-   }
-
-   if (type_ != shape_point && type_ != shape_pointm && type_ != shape_pointz)
+   
+   if (type_!= shape_null && type_ != shape_point && type_ != shape_pointm && type_ != shape_pointz)
    {
       shp_.read_envelope(cur_extent_);
    }
@@ -74,7 +85,7 @@ int shape_io::type() const
    return type_;
 }
 
-const Envelope<double>& shape_io::current_extent() const
+const box2d<double>& shape_io::current_extent() const
 {
    return cur_extent_;
 }
@@ -84,10 +95,10 @@ shape_file& shape_io::shp()
    return shp_;
 }
 
-shape_file& shape_io::shx()
+/*shape_file& shape_io::shx()
 {
    return shx_;
-}
+}*/
 
 
 dbf_file& shape_io::dbf()
@@ -95,14 +106,13 @@ dbf_file& shape_io::dbf()
    return dbf_;
 }
 
-geometry2d * shape_io::read_polyline()
+geometry_type * shape_io::read_polyline()
 {    
-   using mapnik::line_string_impl;
    shape_file::record_type record(reclength_*2-36);
    shp_.read_record(record);
    int num_parts=record.read_ndr_integer();
    int num_points=record.read_ndr_integer();
-   geometry2d * line = new line_string_impl;
+   geometry_type * line = new geometry_type(mapnik::LineString);
    line->set_capacity(num_points + num_parts);
    if (num_parts == 1)
    {
@@ -134,11 +144,11 @@ geometry2d * shape_io::read_polyline()
             end=num_points;
          else
             end=parts[k+1];
-	    
+         
          double x=record.read_double();
          double y=record.read_double();
          line->move_to(x,y);
-	    
+         
          for (int j=start+1;j<end;++j)
          {
             x=record.read_double();
@@ -150,14 +160,13 @@ geometry2d * shape_io::read_polyline()
    return line;
 }
 
-geometry2d * shape_io::read_polylinem()
+geometry_type * shape_io::read_polylinem()
 {    
-   using mapnik::line_string_impl;
    shape_file::record_type record(reclength_*2-36);
    shp_.read_record(record);
    int num_parts=record.read_ndr_integer();
    int num_points=record.read_ndr_integer();
-   geometry2d * line = new line_string_impl;
+   geometry_type * line = new geometry_type(mapnik::LineString);
    line->set_capacity(num_points + num_parts);
    if (num_parts == 1)
    {
@@ -188,11 +197,11 @@ geometry2d * shape_io::read_polylinem()
             end=num_points;
          else
             end=parts[k+1];
-	    
+      
          double x=record.read_double();
          double y=record.read_double();
          line->move_to(x,y);
-	    
+      
          for (int j=start+1;j<end;++j)
          {
             x=record.read_double();
@@ -213,14 +222,13 @@ geometry2d * shape_io::read_polylinem()
    return line;
 }
 
-geometry2d * shape_io::read_polylinez()
+geometry_type * shape_io::read_polylinez()
 {
-   using mapnik::line_string_impl;
    shape_file::record_type record(reclength_*2-36);
    shp_.read_record(record);
    int num_parts=record.read_ndr_integer();
    int num_points=record.read_ndr_integer();
-   geometry2d * line = new line_string_impl;
+   geometry_type * line = new geometry_type(mapnik::LineString);
    line->set_capacity(num_points + num_parts);
    if (num_parts == 1)
    {
@@ -251,11 +259,11 @@ geometry2d * shape_io::read_polylinez()
             end=num_points;
          else
             end=parts[k+1];
-	    
+         
          double x=record.read_double();
          double y=record.read_double();
          line->move_to(x,y);
-	    
+         
          for (int j=start+1;j<end;++j)
          {
             x=record.read_double();
@@ -269,7 +277,7 @@ geometry2d * shape_io::read_polylinez()
    //double z1=record.read_double();
    //for (int i=0;i<num_points;++i)
    // {
-   //	double z=record.read_double();
+   //  double z=record.read_double();
    // }
     
    // m-range
@@ -283,15 +291,14 @@ geometry2d * shape_io::read_polylinez()
    return line;
 }
 
-geometry2d * shape_io::read_polygon()
+geometry_type * shape_io::read_polygon()
 {
-   using mapnik::polygon_impl;
    shape_file::record_type record(reclength_*2-36);
    shp_.read_record(record);
    int num_parts=record.read_ndr_integer();
    int num_points=record.read_ndr_integer();
    std::vector<int> parts(num_parts);
-   geometry2d * poly = new polygon_impl;
+   geometry_type * poly = new geometry_type(mapnik::Polygon);
    poly->set_capacity(num_points + num_parts);
    for (int i=0;i<num_parts;++i)
    {
@@ -324,15 +331,14 @@ geometry2d * shape_io::read_polygon()
    return poly;
 }
 
-geometry2d * shape_io::read_polygonm()
+geometry_type * shape_io::read_polygonm()
 {
-   using mapnik::polygon_impl;
    shape_file::record_type record(reclength_*2-36);
    shp_.read_record(record);
    int num_parts=record.read_ndr_integer();
    int num_points=record.read_ndr_integer();
    std::vector<int> parts(num_parts);
-   geometry2d * poly = new polygon_impl;
+   geometry_type * poly = new geometry_type(mapnik::Polygon);
    poly->set_capacity(num_points + num_parts);
    for (int i=0;i<num_parts;++i)
    {
@@ -373,15 +379,14 @@ geometry2d * shape_io::read_polygonm()
    return poly;
 }
 
-geometry2d * shape_io::read_polygonz()
+geometry_type * shape_io::read_polygonz()
 {
-   using mapnik::polygon_impl;
    shape_file::record_type record(reclength_*2-36);
    shp_.read_record(record);
    int num_parts=record.read_ndr_integer();
    int num_points=record.read_ndr_integer();
    std::vector<int> parts(num_parts);
-   geometry2d * poly=new polygon_impl;
+   geometry_type * poly = new geometry_type(mapnik::Polygon);
    poly->set_capacity(num_points + num_parts);
    for (int i=0;i<num_parts;++i)
    {
@@ -416,7 +421,7 @@ geometry2d * shape_io::read_polygonz()
    //double z1=record.read_double();
    //for (int i=0;i<num_points;++i)
    //{
-   //	double z=record.read_double();
+   //  double z=record.read_double();
    //}
     
    // m-range

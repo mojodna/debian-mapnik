@@ -32,7 +32,7 @@
 #include <boost/program_options.hpp>
 
 #include <mapnik/datasource.hpp>
-#include <mapnik/envelope.hpp>
+#include <mapnik/box2d.hpp>
 #include <mapnik/feature.hpp>
 #include <mapnik/feature_layer_desc.hpp>
 
@@ -42,6 +42,8 @@
 #include "ogr_datasource.cpp"
 #include "ogr_featureset.cpp"
 #include "ogr_index_featureset.cpp"
+
+using mapnik::datasource_exception;
 
 const int MAXDEPTH = 64;
 const int DEFAULT_DEPTH = 8;
@@ -72,13 +74,13 @@ int main (int argc,char** argv)
             ("ratio,r",    po::value<double>(), "split ratio (default 0.55)")
             ("ogr_files",  po::value<vector<string> >(), "ogr supported files to index: file1 file2 ...fileN")
             ;
-	
+        
         po::positional_options_description p;
         p.add("ogr_files",-1);
         po::variables_map vm;        
         po::store(po::command_line_parser(argc, argv).options(desc).positional(p).run(), vm);
         po::notify(vm);
-	
+        
         if (vm.count("version"))
         {
             std::clog<<"version 0.1.0" <<std::endl;
@@ -129,67 +131,87 @@ int main (int argc,char** argv)
             continue;
         }
 
-        unsigned breakpoint = ogrname.find_last_of (".");
+        // TODO - layer names don't match dataset name, so this will break for
+        // any layer types of ogr than shapefiles, etc
+        size_t breakpoint = ogrname.find_last_of (".");
         if (breakpoint == string::npos) breakpoint = ogrname.length();
         std::string ogrlayername (ogrname.substr(0, breakpoint));
 
-        if (boost::filesystem::exists (ogrlayername + ".index"))
+        if (boost::filesystem::exists (ogrlayername + ".ogrindex"))
         {
-            std::clog << "error : " << ogrlayername << ".index file already exists for " << ogrname << std::endl;
+            std::clog << "error : " << ogrlayername << ".ogrindex file already exists for " << ogrname << std::endl;
             continue;
         }
 
         mapnik::parameters params;
         params["type"] = "ogr";
         params["file"] = ogrname;
-        params["layer"] = ogrlayername;
+        //unsigned first = 0;
+        params["layer_by_index"] = 0;//ogrlayername;
         
-        ogr_datasource ogr (params);
-
-        Envelope<double> extent = ogr.envelope();
-        quadtree<int> tree (extent, depth, ratio);
-        int count=0;
-
-        std::clog << "file:" << ogrname << std::endl;
-        std::clog << "layer:" << ogrlayername << std::endl;
-        std::clog << "extent:" << extent << std::endl;
-
-        mapnik::query q (extent, 1.0);
-        mapnik::featureset_ptr itr = ogr.features (q);
-
-        while (true)
+        try
         {
-            mapnik::feature_ptr fp = itr->next();
-            if (!fp)
+            ogr_datasource ogr (params);
+
+
+            box2d<double> extent = ogr.envelope();
+            quadtree<int> tree (extent, depth, ratio);
+            int count=0;
+    
+            std::clog << "file:" << ogrname << std::endl;
+            std::clog << "layer:" << ogrlayername << std::endl;
+            std::clog << "extent:" << extent << std::endl;
+    
+            mapnik::query q (extent, 1.0);
+            mapnik::featureset_ptr itr = ogr.features (q);
+    
+            while (true)
             {
-                break;
+                mapnik::feature_ptr fp = itr->next();
+                if (!fp)
+                {
+                    break;
+                }
+                
+                box2d<double> item_ext = fp->envelope();
+    
+                tree.insert (count, item_ext);
+                if (verbose) {
+                    std::clog << "record number " << (count + 1) << " box=" << item_ext << std::endl;
+                }
+    
+                ++count;
             }
-            
-            Envelope<double> item_ext = fp->envelope();
-
-            tree.insert (count, item_ext);
-            if (verbose) {
-                std::clog << "record number " << (count + 1) << " box=" << item_ext << std::endl;
+    
+            std::clog << " number shapes=" << count << std::endl;  
+    
+            std::fstream file((ogrlayername+".ogrindex").c_str(),
+                              std::ios::in | std::ios::out | std::ios::trunc | std::ios::binary);
+            if (!file) {
+                std::clog << "cannot open ogrindex file for writing file \"" 
+                          << (ogrlayername+".ogrindex") << "\"" << std::endl;
+            } else {
+                tree.trim();
+                std::clog<<" number nodes="<<tree.count()<<std::endl;
+                file.exceptions(std::ios::failbit | std::ios::badbit);
+                tree.write(file);
+                file.flush();
+                file.close();
             }
-
-            ++count;
+        }
+        // catch problem at the datasource creation
+        catch (const mapnik::datasource_exception & ex )
+        {
+            std::clog << ex.what() << "\n";
+            return -1;
         }
 
-        std::clog << " number shapes=" << count << std::endl;  
-
-        std::fstream file((ogrlayername+".index").c_str(),
-                          std::ios::in | std::ios::out | std::ios::trunc | std::ios::binary);
-        if (!file) {
-            std::clog << "cannot open index file for writing file \"" 
-                      << (ogrlayername+".index") << "\"" << std::endl;
-        } else {
-            tree.trim();
-            std::clog<<" number nodes="<<tree.count()<<std::endl;
-            file.exceptions(std::ios::failbit | std::ios::badbit);
-            tree.write(file);
-            file.flush();
-            file.close();
+        catch (...)
+        {
+            std::clog << "unknown exception..." << "\n";
+            return -1;
         }
+
     }
     
     std::clog << "done!" << std::endl;

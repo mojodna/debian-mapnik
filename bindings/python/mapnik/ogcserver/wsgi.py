@@ -17,7 +17,7 @@
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
-# $Id: wsgi.py 1052 2009-03-31 17:18:41Z dane $
+# $Id: wsgi.py 2326 2010-11-08 23:18:08Z dane $
 
 """WSGI application wrapper for Mapnik OGC WMS Server."""
 
@@ -72,7 +72,7 @@ class WSGIApp:
             if reqparams.has_key('service'):
                 del reqparams['service']
             try:
-                mapnikmodule = __import__('mapnik.ogcserver.' + service)
+                mapnikmodule = __import__('mapnik2.ogcserver.' + service)
             except:
                 raise OGCException('Unsupported service "%s".' % service)
             ServiceHandlerFactory = getattr(mapnikmodule.ogcserver, service).ServiceHandlerFactory

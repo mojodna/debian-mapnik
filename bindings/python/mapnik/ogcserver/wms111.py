@@ -17,7 +17,7 @@
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
-# $Id: wms111.py 1085 2009-04-09 18:40:39Z dane $
+# $Id: wms111.py 1782 2010-05-08 17:07:03Z dane $
 
 """WMS 1.1.1 compliant GetCapabilities, GetMap, GetFeatureInfo, and Exceptions interface."""
 
@@ -25,7 +25,7 @@ from common import ParameterDefinition, Response, Version, ListFactory, \
                    ColorFactory, CRSFactory, WMSBaseServiceHandler, CRS, \
                    BaseExceptionHandler, Projection
 from exceptions import OGCException, ServerConfigurationError
-from mapnik import Coord
+from mapnik2 import Coord
 
 try:
     from lxml import etree as ElementTree

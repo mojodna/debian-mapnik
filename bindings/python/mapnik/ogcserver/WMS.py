@@ -17,7 +17,7 @@
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
-# $Id: WMS.py 1032 2009-03-30 04:24:01Z dane $
+# $Id: WMS.py 1782 2010-05-08 17:07:03Z dane $
 
 """Interface for registering map styles and layers for availability in WMS Requests."""
 
@@ -25,7 +25,7 @@ from common import Version, copy_style, copy_layer
 from exceptions import OGCException, ServerConfigurationError
 from wms111 import ServiceHandler as ServiceHandler111
 from wms130 import ServiceHandler as ServiceHandler130
-from mapnik import Style, Map, load_map 
+from mapnik2 import Style, Map, load_map 
 import re
 import sys
 

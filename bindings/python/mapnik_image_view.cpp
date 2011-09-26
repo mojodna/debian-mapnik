@@ -28,46 +28,97 @@ extern "C"
 
 #include <boost/python.hpp>
 #include <mapnik/image_util.hpp>
+#include <mapnik/palette.hpp>
 #include <mapnik/image_view.hpp>
-#include <mapnik/jpeg_io.hpp>
 #include <mapnik/png_io.hpp>
 #include <sstream>
 
-using mapnik::ImageData32;
+// jpeg
+#if defined(HAVE_JPEG)
+#include <mapnik/jpeg_io.hpp>
+#endif
+
+using mapnik::image_data_32;
 using mapnik::image_view;
 using mapnik::save_to_file;
 
 // output 'raw' pixels
-PyObject* view_tostring1(image_view<ImageData32> const& view)
+PyObject* view_tostring1(image_view<image_data_32> const& view)
 {
-   std::ostringstream ss(std::ios::out|std::ios::binary);
-   for (unsigned i=0;i<view.height();i++)
-   {
-      ss.write(reinterpret_cast<const char*>(view.getRow(i)), 
-               view.width() * sizeof(image_view<ImageData32>::pixel_type));
-   }
-   return ::PyString_FromStringAndSize((const char*)ss.str().c_str(),ss.str().size());
+    std::ostringstream ss(std::ios::out|std::ios::binary);
+    for (unsigned i=0;i<view.height();i++)
+    {
+        ss.write(reinterpret_cast<const char*>(view.getRow(i)), 
+                 view.width() * sizeof(image_view<image_data_32>::pixel_type));
+    }
+    return 
+#if PY_VERSION_HEX >= 0x03000000
+        ::PyBytes_FromStringAndSize
+#else
+        ::PyString_FromStringAndSize
+#endif
+        ((const char*)ss.str().c_str(),ss.str().size());
 }
 
 // encode (png,jpeg)
-PyObject* view_tostring2(image_view<ImageData32> const & view, std::string const& format)
+PyObject* view_tostring2(image_view<image_data_32> const & view, std::string const& format)
 {
-   std::string s = save_to_string(view, format);
-   return ::PyString_FromStringAndSize(s.data(),s.size());
+    mapnik::rgba_palette pal;
+    std::string s = save_to_string(view, format, pal);
+    return 
+#if PY_VERSION_HEX >= 0x03000000
+        ::PyBytes_FromStringAndSize
+#else
+        ::PyString_FromStringAndSize
+#endif
+        (s.data(),s.size());
 }
 
-void (*save_view1)(image_view<ImageData32> const&, std::string const&,std::string const&) = mapnik::save_to_file;
-void (*save_view2)(image_view<ImageData32> const&, std::string const&) = mapnik::save_to_file;
+PyObject* view_tostring3(image_view<image_data_32> const & view, std::string const& format, mapnik::rgba_palette const& pal)
+{
+    std::string s = save_to_string(view, format, pal);
+    return 
+#if PY_VERSION_HEX >= 0x03000000
+        ::PyBytes_FromStringAndSize
+#else
+        ::PyString_FromStringAndSize
+#endif
+        (s.data(),s.size());
+}
+
+void save_view1(image_view<image_data_32> const& view, 
+                std::string const& filename)
+{
+    save_to_file(view,filename);
+}
+
+void save_view2(image_view<image_data_32> const& view, 
+                std::string const& filename, 
+                std::string const& type)
+{
+    save_to_file(view,filename,type);
+}
+
+void save_view3(image_view<image_data_32> const& view, 
+                std::string const& filename, 
+                std::string const& type, 
+                mapnik::rgba_palette const& pal)
+{
+    save_to_file(view,filename,type,pal);
+}
+
 
 void export_image_view()
 {
     using namespace boost::python;
-    class_<image_view<ImageData32> >("ImageView","A view into an image.",no_init)
-       .def("width",&image_view<ImageData32>::width)
-       .def("height",&image_view<ImageData32>::height)
-       .def("tostring",&view_tostring1)
-       .def("tostring",&view_tostring2)
-       .def("save",save_view1)
-       .def("save",save_view2)
-       ;
+    class_<image_view<image_data_32> >("ImageView","A view into an image.",no_init)
+        .def("width",&image_view<image_data_32>::width)
+        .def("height",&image_view<image_data_32>::height)
+        .def("tostring",&view_tostring1)
+        .def("tostring",&view_tostring2)
+        .def("tostring",&view_tostring3)
+        .def("save",&save_view1)
+        .def("save",&save_view2)
+        .def("save",&save_view3)
+        ;
 }

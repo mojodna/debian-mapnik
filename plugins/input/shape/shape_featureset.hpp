@@ -20,42 +20,52 @@
  *
  *****************************************************************************/
 
-#ifndef SHAPE_FS_HH
-#define SHAPE_FS_HH
+#ifndef SHAPE_FEATURESET_HPP
+#define SHAPE_FEATURESET_HPP
 
-#include <boost/scoped_ptr.hpp>
+//mapnik
 #include <mapnik/geom_util.hpp>
-#include "shape.hpp"
+#include <mapnik/datasource.hpp>
+
+#include "shape_io.hpp"
+
+//boost
+#include <boost/scoped_ptr.hpp>
 
 using mapnik::Featureset;
-using mapnik::Envelope;
+using mapnik::box2d;
 using mapnik::feature_ptr;
+using mapnik::transcoder;
 
 template <typename filterT>
 class shape_featureset : public Featureset
 {
       filterT filter_;
-      int shape_type_;
+      //int shape_type_;
       shape_io shape_;
-      Envelope<double> query_ext_;
+      box2d<double> query_ext_;
       boost::scoped_ptr<transcoder> tr_;
       long file_length_;
       std::vector<int> attr_ids_;
-      mutable Envelope<double> feature_ext_;
+      mutable box2d<double> feature_ext_;
       mutable int total_geom_size;
       mutable int count_;
+      const int row_limit_;
+
    public:
       shape_featureset(const filterT& filter, 
                        const std::string& shape_file,
                        const std::set<std::string>& attribute_names,
                        std::string const& encoding,
-                       long file_length);
+                       long file_length,
+                       int row_limit);
       virtual ~shape_featureset();
       feature_ptr next();
+
    private:
       shape_featureset(const shape_featureset&);
       const shape_featureset& operator=(const shape_featureset&);
       
 };
 
-#endif //SHAPE_FS_HH
+#endif //SHAPE_FEATURESET_HPP

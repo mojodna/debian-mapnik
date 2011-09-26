@@ -1,33 +1,52 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!DOCTYPE Map  >
-<Map bgcolor="#b5d0d0" srs="+proj=merc +datum=WGS84  +k=1.0 +units=m +over +no_defs" min_version="0.7.1">
-    <Style name="test 1">
-        <Rule name="rule t1">
-            <Filter>[landuse] = 'meadow' or [landuse] = 'wood' or [landuse] = 'forest'</Filter>
-            <MinScaleDenominator>1000</MinScaleDenominator>
+<!DOCTYPE Map>
+<Map background-color="#b5d0d0" srs="+init=epsg:4326" minimum-version="0.8.0">
+    <Style name="1">
+        <Rule title="foo">
+            <Filter>([name]='CHILE')</Filter>
+            <TextSymbolizer size="10" name="[name] + ' (default OGC pixel)'" dy="5" face-name="DejaVu Sans Book" text-transform="lowercase" wrap-width="10" wrap-character=" " halo-radius="1"/>
             <PointSymbolizer/>
         </Rule>
-    </Style>
-    <Style name="test 2">
+        <Rule title="foo">
+            <Filter>([name]='Australia')</Filter>
+            <TextSymbolizer size="10" name="[name] + ' (png)'" dy="20" face-name="DejaVu Sans Book" halo-radius="1"/>
+            <PointSymbolizer file="../images/dummy.png" allow-overlap="true"/>
+        </Rule>
+        <Rule title="foo1">
+            <Filter>([name]='Brazil')</Filter>
+            <TextSymbolizer size="10" name="[name] + ' (svg &amp; tif)'" dy="20" face-name="DejaVu Sans Book" halo-radius="1"/>
+            <PointSymbolizer file="../images/dummy.tif" allow-overlap="true"/>
+            <PointSymbolizer file="../svg/ellipses.svg" allow-overlap="true"/>
+        </Rule>
+        <Rule title="foo">
+            <Filter>([name]='Mongolia')</Filter>
+            <TextSymbolizer size="10" name="[name] + ' (tiff)'" dy="20" face-name="DejaVu Sans Book" halo-radius="1"/>
+            <PointSymbolizer file="../images/dummy.tiff" allow-overlap="true"/>
+        </Rule>
+        <Rule title="foo">
+            <Filter>([name]='Sudan')</Filter>
+            <TextSymbolizer size="10" name="[name] + ' (jpeg)'" dy="20" face-name="DejaVu Sans Book" halo-radius="1"/>
+            <PointSymbolizer file="../images/dummy.jpeg"/>
+        </Rule>
+        <Rule title="foo">
+            <Filter>([name]='United States')</Filter>
+            <TextSymbolizer size="10" name="[name] + ' (jpg)'" dy="20" face-name="DejaVu Sans Book" halo-radius="1"/>
+            <PointSymbolizer file="../images/dummy.jpg"/>
+        </Rule>
         <Rule title="foo">
             <ElseFilter/>
-            <MaxScaleDenominator>1000000</MaxScaleDenominator>
-            <PointSymbolizer file="../images/dummy.png" type="png" width="16" height="16"/>
+            <TextSymbolizer size="10" name="[name]" dy="20" face-name="DejaVu Sans Book" halo-radius="1"/>
+            <PointSymbolizer file="../images/bogus_will_fail.png"/>
         </Rule>
     </Style>
-    <Style name="test 3">
-        <Rule title="foo">
-            <PointSymbolizer file="../images/dummy.png" type="png"/>
-        </Rule>
-    </Style>
-    <Style name="test 4">
-        <Rule title="foo">
-            <PointSymbolizer file="../images/dummy.png" width="16" height="16"/>
-        </Rule>
-    </Style>
-    <Style name="test 5">
-        <Rule title="foo">
-            <PointSymbolizer file="../images/dummy.png"/>
-        </Rule>
-    </Style>
+
+    <Layer name="point" srs="+init=epsg:4326">
+        <StyleName>1</StyleName>
+        <Datasource>
+            <Parameter name="type">sqlite</Parameter>
+            <Parameter name="file">../sqlite/qgis_spatiallite.sqlite</Parameter>
+            <Parameter name="table">point</Parameter>
+            <Parameter name="wkb_format">spatialite</Parameter>
+        </Datasource>
+    </Layer>
+
 </Map>

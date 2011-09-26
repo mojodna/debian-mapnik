@@ -25,33 +25,61 @@
 #define LINE_SYMBOLIZER_HPP
 
 #include <mapnik/stroke.hpp>
+#include <mapnik/symbolizer.hpp>
+#include <mapnik/enumeration.hpp>
 
 namespace mapnik 
 {
-    struct MAPNIK_DECL line_symbolizer
-    {
-        explicit line_symbolizer()
-            : stroke_() {}
-        
-        line_symbolizer(stroke const& stroke)
-            : stroke_(stroke) {}
-	
-        line_symbolizer(color const& pen,float width=1.0)
-            : stroke_(pen,width) {}
-        
-        stroke const& get_stroke() const
-        {
-            return stroke_;
-        }
-        
-        void set_stroke(stroke const& stroke)
-        {
-            stroke_ = stroke;
-        }
 
-    private:
-        stroke stroke_;
-    };
+enum line_rasterizer_enum {
+    RASTERIZER_FULL,           // agg::renderer_scanline_aa_solid
+    RASTERIZER_FAST,           // agg::rasterizer_outline_aa, twice as fast but only good for thin lines
+    line_rasterizer_enum_MAX
+};
+
+DEFINE_ENUM( line_rasterizer_e, line_rasterizer_enum );
+
+struct MAPNIK_DECL line_symbolizer : public symbolizer_base
+{
+    explicit line_symbolizer()
+        : symbolizer_base(),
+          stroke_(),
+          rasterizer_p_(RASTERIZER_FULL) {}
+        
+    line_symbolizer(stroke const& stroke)
+        : symbolizer_base(),
+          stroke_(stroke),
+          rasterizer_p_(RASTERIZER_FULL) {}
+        
+    line_symbolizer(color const& pen,float width=1.0)
+        : symbolizer_base(),
+          stroke_(pen,width),
+          rasterizer_p_(RASTERIZER_FULL) {}
+        
+    stroke const& get_stroke() const
+    {
+        return stroke_;
+    }
+
+    void set_stroke(stroke const& stk)
+    {
+        stroke_ = stk;
+    }
+        
+    void set_rasterizer(line_rasterizer_e rasterizer_p)
+    {
+        rasterizer_p_ = rasterizer_p;
+    }
+    
+    line_rasterizer_e get_rasterizer() const
+    {
+        return rasterizer_p_;
+    }
+
+private:
+    stroke stroke_;
+    line_rasterizer_e rasterizer_p_;
+};
 }
 
 #endif //LINE_SYMBOLIZER_HPP

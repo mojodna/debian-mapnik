@@ -27,7 +27,7 @@ except:
 installed successfully before running this script.\n\n'
     raise
 
-m = Map(690,690,"+proj=latlong +ellps=WGS84")
+m = Map(690,690,"+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs")
 
 m.background = Color(255,100,100,255)
 
@@ -70,7 +70,7 @@ m.layers.append(road_layer)
 # Draw map
 
 # Set the initial extent of the map.
-m.zoom_to_box(Envelope(0,0,14,-14))
+m.zoom_to_box(Box2d(0,0,14,-14))
 
 
 # Render

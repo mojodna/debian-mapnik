@@ -21,6 +21,7 @@
 // qt
 #include <QApplication>
 #include <QStringList>
+#include <QSettings>
 #include <mapnik/datasource_cache.hpp>
 #include <mapnik/font_engine_freetype.hpp>
 #include "mainwindow.hpp"
@@ -28,53 +29,58 @@
 #include <boost/algorithm/string.hpp>
 #include <boost/filesystem/operations.hpp>
 
-bool is_font_file (std::string const& filename)
-{
-    return boost::algorithm::ends_with(filename,std::string(".ttf"));
-}
 
 int main( int argc, char **argv )
 {
-	using mapnik::datasource_cache;
-	using mapnik::freetype_engine;
-	
-	// modify this prefix based on your install location
-	std::string mapnik_dir = "/opt/mapnik";
-	
-	datasource_cache::instance()->register_datasources(mapnik_dir + "/lib/mapnik/input");
-	boost::filesystem::path path(mapnik_dir + "/lib/mapnik/fonts");
-	boost::filesystem::directory_iterator end_itr;	
+    using mapnik::datasource_cache;
+    using mapnik::freetype_engine;
+       
+    QCoreApplication::setOrganizationName("Mapnik");
+    QCoreApplication::setOrganizationDomain("mapnik.org");
+    QCoreApplication::setApplicationName("Viewer");
     
+    QSettings settings("viewer.ini",QSettings::IniFormat);
     
-	if (boost::filesystem::exists(path) && boost::filesystem::is_directory(path))
-	{
-		for (boost::filesystem::directory_iterator itr(path);itr!=end_itr;++itr )
-		{
-			if (!boost::filesystem::is_directory(*itr) && is_font_file(itr->path().leaf())) 
-			{
-				std::cout << "register font " << itr->string() << "\n";
-				freetype_engine::register_font(itr->string());
-			}
-		}
+    // register input plug-ins
+    QString plugins_dir = settings.value("mapnik/plugins_dir",
+                                         QVariant("/usr/local/lib/mapnik2/input/")).toString();
+    datasource_cache::instance()->register_datasources(plugins_dir.toStdString());
+    // register fonts
+    int count = settings.beginReadArray("mapnik/fonts");
+    for (int index=0; index < count; ++index)
+    {
+        settings.setArrayIndex(index);
+        QString font_dir = settings.value("dir").toString();
+        freetype_engine::register_fonts(font_dir.toStdString());
     }
-		
-	QApplication app( argc, argv ); 
-	MainWindow window;
-	window.show();
-	if (argc > 1) window.open(argv[1]);
-	if (argc == 3)
-	{
-		QStringList list = QString(argv[2]).split(",");
-		if (list.size()==4)
-		{
-			bool ok;
-			double x0 = list[0].toDouble(&ok);
-			double y0 = list[1].toDouble(&ok);
-			double x1 = list[2].toDouble(&ok);
-			double y1 = list[3].toDouble(&ok);
-			if (ok) window.set_default_extent(x0,y0,x1,y1);
-		}
-	}
-	
-	return app.exec(); 
+    settings.endArray();
+    
+    QApplication app( argc, argv ); 
+    MainWindow window;
+    window.show();
+    if (argc > 1) window.open(argv[1]);
+    if (argc >= 3)
+    {
+        QStringList list = QString(argv[2]).split(",");
+        if (list.size()==4)
+        {
+            bool ok;
+            double x0 = list[0].toDouble(&ok);
+            double y0 = list[1].toDouble(&ok);
+            double x1 = list[2].toDouble(&ok);
+            double y1 = list[3].toDouble(&ok);
+            if (ok) window.set_default_extent(x0,y0,x1,y1);
+        }
+    }
+    else
+    {
+        window.zoom_all();
+    }
+    if (argc == 4)
+    {
+        bool ok;
+        double scaling_factor = QString(argv[3]).toDouble(&ok);
+        if (ok) window.set_scaling_factor(scaling_factor);
+    }
+    return app.exec(); 
 }

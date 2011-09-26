@@ -21,31 +21,42 @@
  *****************************************************************************/
 //$Id: image_symbolizer.hpp 39 2005-04-10 20:39:53Z pavlenko $
 
-#ifndef POINT_SYMBOLIZER_HPP
-#define POINT_SYMBOLIZER_HPP
+#ifndef MAPNIK_POINT_SYMBOLIZER_HPP
+#define MAPNIK_POINT_SYMBOLIZER_HPP
 
-#include <mapnik/graphics.hpp> 
+// mapnik
 #include <mapnik/symbolizer.hpp> 
-#include <boost/shared_ptr.hpp>
-
+#include <mapnik/enumeration.hpp>
+ 
 namespace mapnik 
-{   
-    struct MAPNIK_DECL point_symbolizer : 
-        public symbolizer_with_image
-    {	
-        explicit point_symbolizer();
-        point_symbolizer(std::string const& file,
-                         std::string const& type,
-                         unsigned width,unsigned height);
-        point_symbolizer(point_symbolizer const& rhs);
-        void set_allow_overlap(bool overlap);
-        bool get_allow_overlap() const;
-        void set_opacity(float opacity);
-        float get_opacity() const;
-    private:
-        float opacity_;
-        bool overlap_;
-    };
+{
+
+enum point_placement_enum {
+    CENTROID_POINT_PLACEMENT,
+    INTERIOR_POINT_PLACEMENT,
+    point_placement_enum_MAX
+};
+
+DEFINE_ENUM( point_placement_e, point_placement_enum );
+
+struct MAPNIK_DECL point_symbolizer : 
+        public symbolizer_with_image, public symbolizer_base
+{       
+    explicit point_symbolizer();
+    point_symbolizer(path_expression_ptr file);
+    point_symbolizer(point_symbolizer const& rhs);
+    void set_allow_overlap(bool overlap);
+    bool get_allow_overlap() const;
+    void set_point_placement(point_placement_e point_p);
+    point_placement_e get_point_placement() const;
+    void set_ignore_placement(bool ignore_placement);
+    bool get_ignore_placement() const;
+        
+private:
+    bool overlap_;
+    point_placement_e point_p_;
+    bool ignore_placement_;
+};
 }
 
-#endif // POINT_SYMBOLIZER_HPP
+#endif // MAPNIK_POINT_SYMBOLIZER_HPP

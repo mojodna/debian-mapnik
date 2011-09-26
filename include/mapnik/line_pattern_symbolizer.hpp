@@ -24,20 +24,18 @@
 #ifndef LINE_PATTERN_SYMBOLIZER_HPP
 #define LINE_PATTERN_SYMBOLIZER_HPP
 
-#include <mapnik/graphics.hpp>
+// mapnik
 #include <mapnik/symbolizer.hpp>
-#include <boost/shared_ptr.hpp>
+//#include <boost/shared_ptr.hpp>
 
 namespace mapnik 
 {      
-    struct MAPNIK_DECL line_pattern_symbolizer :
-        public symbolizer_with_image
-    {
-        line_pattern_symbolizer(std::string const& file,
-                                std::string const& type,
-                                unsigned width,unsigned height);
-        line_pattern_symbolizer(line_pattern_symbolizer const& rhs);
-    };    
+struct MAPNIK_DECL line_pattern_symbolizer :
+        public symbolizer_with_image, public symbolizer_base
+{
+    line_pattern_symbolizer(path_expression_ptr file);
+    line_pattern_symbolizer(line_pattern_symbolizer const& rhs);
+};    
 }
 
 #endif // LINE_PATTERN_SYMBOLIZER_HPP
