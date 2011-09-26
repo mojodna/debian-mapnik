@@ -1,4 +1,4 @@
-mapnik (2.0.0-1) UNRELEASED; urgency=low
+mapnik (2.0.0+ds1-1) UNRELEASED; urgency=low
 
   * New upstream version
   * Debhelper compatibility bumped to 8
