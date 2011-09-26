@@ -4,6 +4,14 @@ mapnik (2.0.0-1) UNRELEASED; urgency=low
 
  -- David Paleino <dapal@debian.org>  Mon, 26 Sep 2011 22:20:38 +0200
 
+mapnik (0.7.1-6) unstable; urgency=low
+
+  * Get rid of obsolete libjpeg62 dependencies.
+    (closes: #629970)
+  * Added me to Uploaders to avoid inappropriate NMUing.
+
+ -- Francesco Paolo Lovergine <frankie@debian.org>  Mon, 25 Jul 2011 14:14:28 +0200
+
 mapnik (0.7.1-5) unstable; urgency=low
 
   * Correctly trap errors in debian/rules, thanks to Jakub Wilk

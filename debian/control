@@ -2,7 +2,7 @@ Source: mapnik
 Priority: optional
 Maintainer: Debian GIS Project <pkg-grass-devel@lists.alioth.debian.org>
 Uploaders: Debian OpenStreetMap Team <pkg-osm-maint@lists.alioth.debian.org>,
- David Paleino <dapal@debian.org>
+ David Paleino <dapal@debian.org>, Francesco Paolo Lovergine <frankie@debian.org>
 Build-Depends:
  scons,
  python-support (>= 0.90.0~),
@@ -16,7 +16,7 @@ Build-Depends:
  libboost-iostreams-dev,
  libboost-program-options-dev,
  libpng12-dev,
- libjpeg62-dev,
+ libjpeg-dev,
  libtiff4-dev,
  zlib1g-dev,
  libfreetype6-dev,
@@ -77,7 +77,7 @@ Depends:
  libboost-system-dev,
  libboost-iostreams-dev,
  libpng12-dev,
- libjpeg62-dev,
+ libjpeg-dev,
  libtiff4-dev,
  zlib1g-dev,
  libfreetype6-dev,
