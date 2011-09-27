@@ -139,7 +139,7 @@ Description: C++/Python toolkit for developing GIS applications (utilities)
  .
  shapeindex: program to creates file system based index for ESRI shape-files
 
-Package: python-mapnik
+Package: python-mapnik2
 Section: python
 Architecture: any
 Depends:
