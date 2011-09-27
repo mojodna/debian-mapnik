@@ -13,7 +13,7 @@ SCONS_FLAGS += PROJ_INCLUDES=/usr/include PROJ_LIBS=/usr/lib
 SCONS_FLAGS += SYSTEM_FONTS=/usr/share/fonts/truetype/ttf-dejavu
 SCONS_FLAGS += XMLPARSER=libxml2
 SCONS_FLAGS += DESTDIR=$(CURDIR)/debian/tmp
-SCONS_FLAGS += PREFIX=/usr LIB_DIR_NAME=/mapnik/0.7
+SCONS_FLAGS += PREFIX=/usr LIB_DIR_NAME=/mapnik/2.0
 
 CFLAGS = -Wall -g
 
@@ -46,7 +46,7 @@ override_dh_install:
 	# and trick epydoc into loading the shlib too
 	-ln -s ../_mapnik.so bindings/python/mapnik/
 	-( cd docs/epydoc_config ; \
-	LD_LIBRARY_PATH=$(CURDIR)/debian/libmapnik0.7/usr/lib/ ./build_epydoc.sh )
+	LD_LIBRARY_PATH=$(CURDIR)/debian/libmapnik2-2.0/usr/lib/ ./build_epydoc.sh )
 	rm -rf bindings/python/mapnik/_mapnik.so
 	dh_install -pmapnik-doc docs/api_docs/python /usr/share/doc/mapnik-doc/
 
