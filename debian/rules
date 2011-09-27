@@ -12,31 +12,27 @@ SCONS_FLAGS := INPUT_PLUGINS=gdal,geos,kismet,ogr,osm,postgis,raster,rasterlite,
 SCONS_FLAGS += PROJ_INCLUDES=/usr/include PROJ_LIBS=/usr/lib
 SCONS_FLAGS += SYSTEM_FONTS=/usr/share/fonts/truetype/ttf-dejavu
 SCONS_FLAGS += XMLPARSER=libxml2
-SCONS_FLAGS += DESTDIR=$(CURDIR)/debian/tmp
 SCONS_FLAGS += PREFIX=/usr LIB_DIR_NAME=/mapnik/2.0
 
-CFLAGS = -Wall -g
-
-ifneq (,$(findstring noopt,$(DEB_BUILD_OPTIONS)))
-	export CFLAGS += -O0
-else
-	export CFLAGS += -O2
-endif
-
 override_dh_auto_configure:
-	scons $(SCONS_FLAGS) CCFLAGS="$(CFLAGS)" configure
-	dh_auto_configure
+	scons $(SCONS_FLAGS) CCFLAGS="$(CFLAGS)" configure --debug=explain
+#	dh_auto_configure
 
 override_dh_auto_build:
 	set -e; \
 	for py in $(shell pyversions -r); do \
-		scons $(SCONS_FLAGS) PYTHON=/usr/bin/$$py ; \
+		scons $(SCONS_FLAGS) PYTHON=/usr/bin/$$py --debug=explain ; \
 	done
 
-	dh_auto_build
+#	dh_auto_build
 
 override_dh_prep:
 	dh_prep -Xdebian/tmp
+
+override_dh_auto_install:
+	for py in $(shell pyversions -r); do \
+		scons $(SCONS_FLAGS) CCFLAGS="$(CFLAGS)" PYTHON=/usr/bin/$$py DESTDIR=$(CURDIR)/debian/tmp install --debug=explain ; \
+	done
 
 override_dh_install:
 	dh_install
@@ -66,8 +62,6 @@ override_dh_installexamples:
 	find $(CURDIR)/debian/ -name "*.png" | xargs -r chmod -x
 
 %:
-#	dh_installexamples -Xdata/new
-#	dh_install --sourcedir=debian/tmp
 	dh $@ \
 		--with python2
 
