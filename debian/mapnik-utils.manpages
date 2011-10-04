@@ -1,1 +1,3 @@
 debian/manpages/shapeindex.1
+debian/manpages/mapnik-speed-check.1
+debian/manpages/upgrade-map-xml.1
