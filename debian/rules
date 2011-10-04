@@ -16,15 +16,12 @@ SCONS_FLAGS += PREFIX=/usr LIB_DIR_NAME=/mapnik/2.0
 
 override_dh_auto_configure:
 	scons $(SCONS_FLAGS) CCFLAGS="$(CFLAGS)" configure
-#	dh_auto_configure
 
 override_dh_auto_build:
 	set -e; \
 	for py in $(shell pyversions -r); do \
 		scons $(SCONS_FLAGS) PYTHON=/usr/bin/$$py ; \
 	done
-
-#	dh_auto_build
 
 override_dh_prep:
 	dh_prep -Xdebian/tmp
