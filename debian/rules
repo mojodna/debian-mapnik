@@ -15,13 +15,13 @@ SCONS_FLAGS += XMLPARSER=libxml2
 SCONS_FLAGS += PREFIX=/usr LIB_DIR_NAME=/mapnik/2.0
 
 override_dh_auto_configure:
-	scons $(SCONS_FLAGS) CCFLAGS="$(CFLAGS)" configure --debug=explain
+	scons $(SCONS_FLAGS) CCFLAGS="$(CFLAGS)" configure
 #	dh_auto_configure
 
 override_dh_auto_build:
 	set -e; \
 	for py in $(shell pyversions -r); do \
-		scons $(SCONS_FLAGS) PYTHON=/usr/bin/$$py --debug=explain ; \
+		scons $(SCONS_FLAGS) PYTHON=/usr/bin/$$py ; \
 	done
 
 #	dh_auto_build
@@ -31,7 +31,7 @@ override_dh_prep:
 
 override_dh_auto_install:
 	for py in $(shell pyversions -r); do \
-		scons $(SCONS_FLAGS) CCFLAGS="$(CFLAGS)" PYTHON=/usr/bin/$$py DESTDIR=$(CURDIR)/debian/tmp install --debug=explain ; \
+		scons $(SCONS_FLAGS) CCFLAGS="$(CFLAGS)" PYTHON=/usr/bin/$$py DESTDIR=$(CURDIR)/debian/tmp install ; \
 	done
 
 override_dh_install:
