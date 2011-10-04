@@ -38,6 +38,9 @@ override_dh_install:
 	dh_install
 	find $(CURDIR)/debian/ -name "modserver.py" | xargs chmod -x
 
+	mv $(CURDIR)/debian/mapnik-utils/usr/bin/upgrade_map_xml.py \
+		$(CURDIR)/debian/mapnik-utils/usr/bin/upgrade-map-xml
+
 	# build Python API documentation
 	# and trick epydoc into loading the shlib too
 	-ln -s ../_mapnik2.so bindings/python/mapnik/

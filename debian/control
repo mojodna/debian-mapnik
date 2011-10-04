@@ -122,6 +122,8 @@ Architecture: any
 Depends:
  ${shlibs:Depends}
  , ${misc:Depends}
+ , python-mapnik2
+ , python-lxml
 Description: C++/Python toolkit for developing GIS applications (utilities)
  Mapnik is an OpenSource C++/Python toolkit for developing GIS
  (Geographic Information Systems) applications. At the core is a C++
