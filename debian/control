@@ -14,7 +14,6 @@ Build-Depends:
  , libboost-regex-dev
  , libboost-python-dev
  , libboost-system-dev
-# , libboost-iostreams-dev
  , libboost-program-options-dev
  , libpng12-dev
  , libjpeg-dev
@@ -24,7 +23,6 @@ Build-Depends:
  , libpq-dev
  , libproj-dev
  , libltdl-dev
-# , libfribidi-dev
  , libgdal1-dev
  , libxml2-dev
  , libicu-dev
@@ -33,8 +31,7 @@ Build-Depends:
  , python-cairo-dev
  , libsqlite3-dev
  , libcurl4-gnutls-dev
-# , libsigc++-2.0-dev
-# , python-epydoc
+ , python-epydoc
  , librasterlite-dev (>= 1.1~)
  , libgeos-dev
  , pkg-config
