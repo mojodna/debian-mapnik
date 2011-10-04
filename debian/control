@@ -119,6 +119,7 @@ Architecture: any
 Depends:
  ${shlibs:Depends}
  , ${misc:Depends}
+ , ${python:Depends}
  , python-mapnik2
  , python-lxml
 Description: C++/Python toolkit for developing GIS applications (utilities)
