@@ -67,6 +67,8 @@ Description: C++/Python toolkit for developing GIS applications (libraries)
 Package: libmapnik2-dev
 Section: libdevel
 Architecture: any
+Breaks: libmapnik-dev (<< 2.0.0+ds1-1~)
+Replaces: libmapnik-dev (<< 2.0.0+ds1-1~)
 Depends:
  ${misc:Depends}
  , libmapnik2-2.0 (= ${binary:Version})
