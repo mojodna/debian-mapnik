@@ -1,4 +1,4 @@
-mapnik (2.0.0+ds1-1) UNRELEASED; urgency=low
+mapnik (2.0.0+ds1-1) unstable; urgency=low
 
   * New upstream version
   * Debhelper compatibility bumped to 8
@@ -7,7 +7,7 @@ mapnik (2.0.0+ds1-1) UNRELEASED; urgency=low
   * Package renamed from libmapnik0.7 to libmapnik2-2.0
   * Purge debian/copyright from non-(anymore)-existing files
 
- -- David Paleino <dapal@debian.org>  Tue, 04 Oct 2011 19:07:56 +0200
+ -- David Paleino <dapal@debian.org>  Wed, 05 Oct 2011 13:02:49 +0200
 
 mapnik (0.7.1-6) unstable; urgency=low
 
