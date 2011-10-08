@@ -1,3 +1,10 @@
+mapnik (2.0.0+ds1-2) UNRELEASED; urgency=low
+
+  * 03-fix_big-endian.patch added: the variable for big-endian
+    architectures was wrongly named (Closes: #644704)
+
+ -- David Paleino <dapal@debian.org>  Sat, 08 Oct 2011 22:12:16 +0200
+
 mapnik (2.0.0+ds1-1) unstable; urgency=low
 
   * New upstream version
