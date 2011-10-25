@@ -1,8 +1,8 @@
-mapnik (2.0.0+ds1-3) UNRELEASED; urgency=low
+mapnik (2.0.0+ds1-3) unstable; urgency=low
 
   * Fix wrong linkage against boost_python-py2*
 
- -- David Paleino <dapal@debian.org>  Tue, 25 Oct 2011 09:59:35 +0200
+ -- David Paleino <dapal@debian.org>  Tue, 25 Oct 2011 22:20:35 +0200
 
 mapnik (2.0.0+ds1-2) unstable; urgency=low
 
