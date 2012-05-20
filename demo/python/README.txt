@@ -1,4 +1,4 @@
-# $Id: README.txt 189 2006-03-22 02:41:13Z jdoyon $
+# $Id$
 
 This directory contains a sample python script implementing the Mapnik API.
 

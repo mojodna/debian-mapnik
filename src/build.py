@@ -60,8 +60,9 @@ lib_env['LIBS'] = ['freetype','ltdl','png','tiff','z','jpeg','proj',env['ICU_LIB
 if len(env['EXTRA_FREETYPE_LIBS']):
     lib_env['LIBS'].extend(copy(env['EXTRA_FREETYPE_LIBS']))
 
-if env['XMLPARSER'] == 'libxml2':
-    lib_env['LIBS'].append('xml2')
+# libxml2 should be optional but is currently not
+# https://github.com/mapnik/mapnik/issues/913
+lib_env['LIBS'].append('xml2')
 
 if env['THREADING'] == 'multi':
     lib_env['LIBS'].append('boost_thread%s' % env['BOOST_APPEND'])
@@ -78,9 +79,9 @@ if not env['RUNTIME_LINK'] == 'static':
     
 
 if env['PLATFORM'] == 'Darwin':
-    mapnik_libname = 'libmapnik2.dylib'
+    mapnik_libname = 'libmapnik.dylib'
 else:
-    mapnik_libname = 'libmapnik2.so.' + ("%d.%d" % (ABI_VERSION[0],ABI_VERSION[1])) 
+    mapnik_libname = 'libmapnik.so.' + ("%d.%d" % (int(ABI_VERSION[0]),int(ABI_VERSION[1])))
 
 if env['PLATFORM'] == 'Darwin':
     if env['FULL_LIB_PATH']:
@@ -88,7 +89,7 @@ if env['PLATFORM'] == 'Darwin':
     else:
         lib_path = mapnik_libname
     mapnik_lib_link_flag += ' -Wl,-install_name,%s' % lib_path
-    _d = {'version':env['MAPNIK_VERSION_STRING']}
+    _d = {'version':env['MAPNIK_VERSION_STRING'].replace('-pre','')}
     mapnik_lib_link_flag += ' -current_version %(version)s -compatibility_version %(version)s' % _d
 elif env['PLATFORM'] == 'SunOS':
     if env['CXX'].startswith('CC'):
@@ -203,6 +204,20 @@ if env['LIBTOOL_SUPPORTS_ADVISE']:
 else:
     source.insert(0,'datasource_cache.cpp')
 
+if env.get('BOOST_LIB_VERSION_FROM_HEADER'):
+    boost_version_from_header = int(env['BOOST_LIB_VERSION_FROM_HEADER'].split('_')[1])
+    if boost_version_from_header < 46:
+        # avoid ubuntu issue with boost interprocess:
+        # https://github.com/mapnik/mapnik/issues/1001
+        env4 = lib_env.Clone()
+        env4.Append(CXXFLAGS = '-fpermissive')
+        cpp ='mapped_memory_cache.cpp'
+        source.remove(cpp)
+        if env['LINKING'] == 'static':
+            source.insert(0,env4.StaticObject(cpp))
+        else:
+            source.insert(0,env4.SharedObject(cpp))
+
 if env['JPEG']:
     source += Split(
         """
@@ -228,7 +243,7 @@ source += Split(
     )
 
 if env['RUNTIME_LINK'] == "static":
-    source += glob.glob('../agg/src/' + '*.cpp')
+    source += glob.glob('../deps/agg/src/' + '*.cpp')
 
 # grid backend
 source += Split(
@@ -269,15 +284,7 @@ if env['SVG_RENDERER']: # svg backend
     lib_env.Append(CXXFLAGS = '-DSVG_RENDERER')
     libmapnik_cxxflags.append('-DSVG_RENDERER')
 
-if env['XMLPARSER'] == 'tinyxml':
-    source += Split(
-        """
-        ../tinyxml/tinystr.cpp
-        ../tinyxml/tinyxml.cpp
-        ../tinyxml/tinyxmlerror.cpp
-        ../tinyxml/tinyxmlparser.cpp
-        """)
-elif env['XMLPARSER'] == 'libxml2' and env['HAS_LIBXML2']:
+if env['XMLPARSER'] == 'libxml2' and env['HAS_LIBXML2']:
     source += Split(
         """
         libxml2_loader.cpp
@@ -300,9 +307,9 @@ else:
     linkflags = mapnik_lib_link_flag
 
 if env['LINKING'] == 'static':
-    mapnik = lib_env.StaticLibrary('mapnik2', source, LINKFLAGS=linkflags)
+    mapnik = lib_env.StaticLibrary('mapnik', source, LINKFLAGS=linkflags)
 else:
-    mapnik = lib_env.SharedLibrary('mapnik2', source, LINKFLAGS=linkflags)
+    mapnik = lib_env.SharedLibrary('mapnik', source, LINKFLAGS=linkflags)
 
 # cache library values for other builds to use
 env['LIBMAPNIK_LIBS'] = copy(lib_env['LIBS'])
@@ -320,7 +327,7 @@ if env['PLATFORM'] != 'Darwin':
 
     major, minor, micro = ABI_VERSION
     
-    soFile = "%s.%d.%d.%d" % (os.path.basename(str(mapnik[0])), major, minor, micro)
+    soFile = "%s.%d.%d.%d" % (os.path.basename(str(mapnik[0])), int(major), int(minor), int(micro))
     target = os.path.join(env['MAPNIK_LIB_BASE_DEST'], soFile)
     
     if 'uninstall' not in COMMAND_LINE_TARGETS:
@@ -331,7 +338,7 @@ if env['PLATFORM'] != 'Darwin':
 
     
     # Install symlinks
-    target1 = os.path.join(env['MAPNIK_LIB_BASE_DEST'], "%s.%d.%d" % (os.path.basename(str(mapnik[0])),major, minor))
+    target1 = os.path.join(env['MAPNIK_LIB_BASE_DEST'], "%s.%d.%d" % (os.path.basename(str(mapnik[0])),int(major), int(minor)))
     target2 = os.path.join(env['MAPNIK_LIB_BASE_DEST'], os.path.basename(str(mapnik[0])))
     if 'uninstall' not in COMMAND_LINE_TARGETS:
         if 'install' in COMMAND_LINE_TARGETS:

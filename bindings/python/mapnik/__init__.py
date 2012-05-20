@@ -1,6 +1,6 @@
 #
 # This file is part of Mapnik (C++/Python mapping toolkit)
-# Copyright (C) 2009 Artem Pavlenko, Dane Springmeyer
+# Copyright (C) 2009 Artem Pavlenko
 #
 # Mapnik is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
@@ -23,7 +23,7 @@ Boost Python bindings to the Mapnik C++ shared library.
 
 Several things happen when you do:
 
-    >>> import mapnik2
+    >>> import mapnik
 
  1) Mapnik C++ objects are imported via the '__init__.py' from the '_mapnik.so' shared object
     (_mapnik.pyd on win) which references libmapnik.so (linux), libmapnik.dylib (mac), or
@@ -43,7 +43,7 @@ import os
 import sys
 import warnings
 
-from _mapnik2 import *
+from _mapnik import *
 from paths import inputpluginspath, fontscollectionpath
 
 import printing
@@ -605,13 +605,6 @@ def Geos(**keywords):
     keywords['type'] = 'geos'
     return CreateDatasource(keywords)
 
-def mapnik_version_string(version=mapnik_version()):
-    """Return the Mapnik version as a string."""
-    patch_level = version % 100
-    minor_version = version / 100 % 1000
-    major_version = version / 100000
-    return '%s.%s.%s' % ( major_version, minor_version,patch_level)
-
 def mapnik_version_from_string(version_string):
     """Return the Mapnik version from a string."""
     n = version_string.split('.')
@@ -631,105 +624,3 @@ def register_fonts(path=fontscollectionpath,valid_extensions=['.ttf','.otf','.tt
 # auto-register known plugins and fonts
 register_plugins()
 register_fonts()
-
-# Explicitly export API members to avoid namespace pollution
-# and ensure correct documentation processing
-__all__ = [
-    # classes
-    'Color',
-    'Coord',
-    'Palette',
-    #'ColorBand',
-    'CompositeOp',
-    'DatasourceCache',
-    'MemoryDatasource',
-    'Box2d',
-    'Feature',
-    'Featureset',
-    'FontEngine',
-    'Geometry2d',
-    'GlyphSymbolizer',
-    'Image',
-    'ImageView',
-    'Grid',
-    'GridView',
-    'Layer',
-    'Layers',
-    'LinePatternSymbolizer',
-    'LineSymbolizer',
-    'Map',
-    'MarkersSymbolizer',
-    'Names',
-    'Path',
-    'Parameter',
-    'Parameters',
-    'PointDatasource',
-    'PointSymbolizer',
-    'PolygonPatternSymbolizer',
-    'PolygonSymbolizer',
-    'ProjTransform',
-    'Projection',
-    'Query',
-    'RasterSymbolizer',
-    'RasterColorizer',
-    'Rule', 'Rules',
-    'ShieldSymbolizer',
-    'Singleton',
-    'Stroke',
-    'Style',
-    'Symbolizer',
-    'Symbolizers',
-    'TextSymbolizer',
-    'ViewTransform',
-    # enums
-    'aspect_fix_mode',
-    'point_placement',
-    'label_placement',
-    'line_cap',
-    'line_join',
-    'text_transform',
-    'vertical_alignment',
-    'horizontal_alignment',
-    'justify_alignment',
-    'pattern_alignment',
-    'filter_mode',
-    # functions
-    # datasources
-    'Datasource',
-    'CreateDatasource',
-    'Shapefile',
-    'PostGIS',
-    'Raster',
-    'Gdal',
-    'Occi',
-    'Ogr',
-    'SQLite',
-    'Osm',
-    'Kismet',
-    'Describe',
-    #   version and environment
-    'mapnik_version_string',
-    'mapnik_version',
-    'mapnik_svn_revision',
-    'has_cairo',
-    'has_pycairo',
-    #   factory methods
-    'Expression',
-    'PathExpression',
-    #   load/save/render
-    'load_map',
-    'load_map_from_string',
-    'save_map',
-    'save_map_to_string',
-    'render',
-    'render_grid',
-    'render_tile_to_file',
-    'render_to_file',
-    #   other
-    'register_plugins',
-    'register_fonts',
-    'scale_denominator',
-    # deprecated
-    'Filter',
-    'Envelope',
-    ]

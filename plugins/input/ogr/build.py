@@ -38,7 +38,7 @@ ogr_src = Split(
 plugin_env['LIBS'] = [env['PLUGINS']['ogr']['lib']]
 
 # Link Library to Dependencies
-plugin_env['LIBS'].append('mapnik2')
+plugin_env['LIBS'].append('mapnik')
 plugin_env['LIBS'].append(env['ICU_LIB_NAME'])
 plugin_env['LIBS'].append('boost_system%s' % env['BOOST_APPEND'])
 plugin_env['LIBS'].append('boost_filesystem%s' % env['BOOST_APPEND'])
@@ -47,9 +47,16 @@ if env['RUNTIME_LINK'] == 'static':
     cmd = 'gdal-config --dep-libs'
     plugin_env.ParseConfig(cmd)
 
+if env.get('BOOST_LIB_VERSION_FROM_HEADER'):
+    boost_version_from_header = int(env['BOOST_LIB_VERSION_FROM_HEADER'].split('_')[1])
+    if boost_version_from_header < 46:
+        # avoid ubuntu issue with boost interprocess:
+        # https://github.com/mapnik/mapnik/issues/1082
+        plugin_env.Append(CXXFLAGS = '-fpermissive')
+
 input_plugin = plugin_env.SharedLibrary('../ogr', source=ogr_src, SHLIBPREFIX='', SHLIBSUFFIX='.input', LINKFLAGS=env['CUSTOM_LDFLAGS'])
 
-# if the plugin links to libmapnik2 ensure it is built first
+# if the plugin links to libmapnik ensure it is built first
 Depends(input_plugin, env.subst('../../../src/%s' % env['MAPNIK_LIB_NAME']))
 
 if 'uninstall' not in COMMAND_LINE_TARGETS:
