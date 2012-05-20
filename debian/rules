@@ -4,7 +4,10 @@
 # Uncomment this to turn on verbose mode.
 #export DH_VERBOSE=1
 
+ifndef UPVER
 UPVER := $(shell dpkg-parsechangelog | grep ^Version | cut -d' ' -f2 | cut -d- -f1 | cut -d+ -f1)
+endif
+
 TARNAME := mapnik_$(UPVER)+ds1.orig.tar
 
 # scons flags
