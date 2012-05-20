@@ -1,3 +1,9 @@
+mapnik (2.0.0+ds1-4) UNRELEASED; urgency=low
+
+  * Switch debian/watch to github tags
+
+ -- David Paleino <dapal@debian.org>  Sun, 20 May 2012 08:49:20 +0200
+
 mapnik (2.0.0+ds1-3) unstable; urgency=low
 
   * Fix wrong linkage against boost_python-py2*
