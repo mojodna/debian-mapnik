@@ -16,7 +16,6 @@
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
-# $Id: SConstruct 3352 2011-09-15 22:15:04Z dane $
 
 
 import os
@@ -317,7 +316,8 @@ opts.AddVariables(
     ('PREFIX', 'The install path "prefix"', '/usr/local'),
     ('PYTHON_PREFIX','Custom install path "prefix" for python bindings (default of no prefix)',''),
     ('DESTDIR', 'The root directory to install into. Useful mainly for binary package building', '/'),
-    ('PATH_INSERT', 'A custom path to append to the $PATH env to prioritize usage of shell programs like pkg-config will be used if multiple are present on the system', ''),
+    ('PATH', 'A custom path (or multiple paths divided by ":") to append to the $PATH env to prioritize usage of command line programs (if multiple are present on the system)', ''),
+    ('PATH_REMOVE', 'A path prefix to exclude from all know command and compile paths', ''),
     
     # Boost variables
     # default is '/usr/include', see FindBoost method below
@@ -327,7 +327,7 @@ opts.AddVariables(
     ('BOOST_TOOLKIT','Specify boost toolkit, e.g., gcc41.','',False),
     ('BOOST_ABI', 'Specify boost ABI, e.g., d.','',False),
     ('BOOST_VERSION','Specify boost version, e.g., 1_35.','',False),
-    ('BOOST_PYTHON_LIB','Specify library name or full path to boost_python lib (e.g. "boost_python-py26" or "/usr/lib/libboost_python.dylib")',''),
+    ('BOOST_PYTHON_LIB','Specify library name to specific Boost Python lib (e.g. "boost_python-py26")',''),
     
     # Variables for required dependencies
     ('FREETYPE_CONFIG', 'The path to the freetype-config executable.', 'freetype-config'),
@@ -373,7 +373,7 @@ opts.AddVariables(
     # Other variables
     BoolVariable('SHAPE_MEMORY_MAPPED_FILE', 'Utilize memory-mapped files in Shapefile Plugin (higher memory usage, better performance)', 'True'),
     ('SYSTEM_FONTS','Provide location for python bindings to register fonts (if given aborts installation of bundled DejaVu fonts)',''),
-    ('LIB_DIR_NAME','Name to use for the subfolder beside libmapnik where fonts and plugins are installed','mapnik2'),
+    ('LIB_DIR_NAME','Name to use for the subfolder beside libmapnik where fonts and plugins are installed','mapnik'),
     PathVariable('PYTHON','Full path to Python executable used to build bindings', sys.executable),
     BoolVariable('FRAMEWORK_PYTHON', 'Link against Framework Python on Mac OS X', 'True'),
     BoolVariable('PYTHON_DYNAMIC_LOOKUP', 'On OSX, do not directly link python lib, but rather dynamically lookup symbols', 'True'),
@@ -381,7 +381,7 @@ opts.AddVariables(
     BoolVariable('FULL_LIB_PATH', 'Use the full path for the libmapnik.dylib "install_name" when linking on Mac OS X', 'True'),
     ListVariable('BINDINGS','Language bindings to build','all',['python']),
     EnumVariable('THREADING','Set threading support','multi', ['multi','single']),
-    EnumVariable('XMLPARSER','Set xml parser ','libxml2', ['tinyxml','spirit','libxml2']),
+    EnumVariable('XMLPARSER','Set xml parser','libxml2', ['libxml2','ptree']),
     ('JOBS', 'Set the number of parallel compilations', "1", lambda key, value, env: int(value), int),
     BoolVariable('DEMO', 'Compile demo c++ application', 'False'),
     BoolVariable('PGSQL2SQLITE', 'Compile and install a utility to convert postgres tables to sqlite', 'False'),
@@ -424,7 +424,6 @@ pickle_store = [# Scons internal variables
         'PYTHON_SYS_PREFIX',
         'COLOR_PRINT',
         'HAS_BOOST_SYSTEM',
-        'SVN_REVISION',
         'HAS_CAIRO',
         'HAS_PYCAIRO',
         'HAS_LIBXML2',
@@ -432,7 +431,8 @@ pickle_store = [# Scons internal variables
         'PYTHON_IS_64BIT',
         'SAMPLE_INPUT_PLUGINS',
         'PKG_CONFIG_PATH',
-        'PATH_INSERT',
+        'PATH',
+        'PATH_REMOVE',
         'MAPNIK_LIB_DIR',
         'MAPNIK_LIB_DIR_DEST',
         'INSTALL_PREFIX',
@@ -448,6 +448,7 @@ pickle_store = [# Scons internal variables
         'CAIROMM_LIBPATHS',
         'CAIROMM_LINKFLAGS',
         'CAIROMM_CPPPATHS',
+        'BOOST_LIB_VERSION_FROM_HEADER'
         ]
 
 # Add all other user configurable options to pickle pickle_store
@@ -521,11 +522,6 @@ if sys.platform == "win32":
     color_print = regular_print
 
 color_print(4,'\nWelcome to Mapnik...\n')
-
-color_print(1,'*'*45)
-color_print(1,'You are compiling Mapnik trunk (aka Mapnik2)')
-color_print(1,'See important details at:\nhttp://trac.mapnik.org/wiki/Mapnik2')
-color_print(1,('*'*45)+'\n')
 
 
 #### Custom Configure Checks ###
@@ -796,7 +792,7 @@ def GetMapnikLibVersion(context):
 
 int main() 
 {
-    std::cout << MAPNIK_VERSION << std::endl;
+    std::cout << MAPNIK_VERSION_STRING << std::endl;
     return 0;
 }
 
@@ -806,11 +802,7 @@ int main()
     context.Result(ret[0])
     if not ret[1]:
         return []
-    version = int(ret[1].strip())    
-    patch_level = version % 100
-    minor_version = version / 100 % 1000
-    major_version = version / 100000
-    return [major_version,minor_version,patch_level]
+    return ret[1].strip()
 
 def icu_at_least_four_two(context):
     ret = context.TryRun("""
@@ -966,7 +958,6 @@ if not preconfigured:
     env['CAIROMM_CPPPATHS'] = []
     env['HAS_PYCAIRO'] = False
     env['HAS_LIBXML2'] = False
-    env['SVN_REVISION'] = None
     env['LIBMAPNIK_LIBS'] = []
     env['LIBMAPNIK_CPPATHS'] = []
     env['LIBMAPNIK_CXXFLAGS'] = []
@@ -1007,16 +998,17 @@ if not preconfigured:
         env['MAPNIK_FONTS_DEST'] = os.path.join(env['MAPNIK_LIB_DIR_DEST'],'fonts')
     
     if env['LINKING'] == 'static':
-       env['MAPNIK_LIB_NAME'] = '${LIBPREFIX}mapnik2${LIBSUFFIX}'
+       env['MAPNIK_LIB_NAME'] = '${LIBPREFIX}mapnik${LIBSUFFIX}'
     else:
-       env['MAPNIK_LIB_NAME'] = '${SHLIBPREFIX}mapnik2${SHLIBSUFFIX}'
+       env['MAPNIK_LIB_NAME'] = '${SHLIBPREFIX}mapnik${SHLIBSUFFIX}'
         
     if env['PKG_CONFIG_PATH']:
         env['ENV']['PKG_CONFIG_PATH'] = os.path.realpath(env['PKG_CONFIG_PATH'])
         # otherwise this variable == os.environ["PKG_CONFIG_PATH"]
-    if env['PATH_INSERT']:
-        env['ENV']['PATH'] = os.path.realpath(env['PATH_INSERT']) + ':' + env['ENV']['PATH']
-    
+
+    if env['PATH']:
+        env['ENV']['PATH'] = os.path.realpath(env['PATH']) + ':' + env['ENV']['PATH']
+
     if env['SYSTEM_FONTS']:
         if not os.path.isdir(env['SYSTEM_FONTS']):
             color_print(1,'Warning: Directory specified for SYSTEM_FONTS does not exist!')
@@ -1072,7 +1064,6 @@ if not preconfigured:
         env.AppendUnique(CPPPATH = os.path.realpath(inc_path))
         env.AppendUnique(LIBPATH = os.path.realpath(lib_path))
 
-    
     conf.parse_config('FREETYPE_CONFIG')
 
     # check if freetype links to bz2
@@ -1083,12 +1074,10 @@ if not preconfigured:
         if 'bz2' in temp_env['LIBS']:
             env['EXTRA_FREETYPE_LIBS'].append('bz2')
 
-    if env['XMLPARSER'] == 'tinyxml':
-        env['CPPPATH'].append('#tinyxml')
-        env.Append(CXXFLAGS = '-DBOOST_PROPERTY_TREE_XML_PARSER_TINYXML -DTIXML_USE_STL')
-    elif env['XMLPARSER'] == 'libxml2':
-        if conf.parse_config('XML2_CONFIG'):
-            env['HAS_LIBXML2'] = True
+    # libxml2 should be optional but is currently not
+    # https://github.com/mapnik/mapnik/issues/913
+    if conf.parse_config('XML2_CONFIG'):
+        env['HAS_LIBXML2'] = True
 
     LIBSHEADERS = [
         ['m', 'math.h', True,'C'],
@@ -1110,14 +1099,14 @@ if not preconfigured:
     if env['PRIORITIZE_LINKING']:
         conf.prioritize_paths(silent=False)    
     
-    for libinfo in LIBSHEADERS:
-        if not conf.CheckLibWithHeader(libinfo[0], libinfo[1], libinfo[3]):
-            if libinfo[2]:
-                color_print(1,'Could not find required header or shared library for %s' % libinfo[0])
-                env['MISSING_DEPS'].append(libinfo[0])
+    for libname, headers, required, lang in LIBSHEADERS:
+        if not conf.CheckLibWithHeader(libname, headers, lang):
+            if required:
+                color_print(1, 'Could not find required header or shared library for %s' % libname)
+                env['MISSING_DEPS'].append(libname)
             else:
-                color_print(4,'Could not find optional header or shared library for %s' % libinfo[0])
-                env['SKIPPED_DEPS'].append(libinfo[0])            
+                color_print(4, 'Could not find optional header or shared library for %s' % libname)
+                env['SKIPPED_DEPS'].append(libname)
 
     if env['ICU_LIB_NAME'] not in env['MISSING_DEPS']:
         if not conf.icu_at_least_four_two():
@@ -1133,9 +1122,9 @@ if not preconfigured:
     
     # boost system is used in boost 1.35 and greater
     env['HAS_BOOST_SYSTEM'] = False
-    boost_lib_version_from_header = conf.GetBoostLibVersion()
-    if boost_lib_version_from_header:
-        boost_version_from_header = int(boost_lib_version_from_header.split('_')[1])
+    env['BOOST_LIB_VERSION_FROM_HEADER'] = conf.GetBoostLibVersion()
+    if env['BOOST_LIB_VERSION_FROM_HEADER']:
+        boost_version_from_header = int(env['BOOST_LIB_VERSION_FROM_HEADER'].split('_')[1])
         if boost_version_from_header >= 35:
             env['HAS_BOOST_SYSTEM'] = True
             
@@ -1168,7 +1157,7 @@ if not preconfigured:
         if not env['BOOST_VERSION']:
             env['MISSING_DEPS'].append('boost version >=%s' % BOOST_MIN_VERSION)
     else:
-        color_print(4,'Found boost lib version... %s' % boost_lib_version_from_header )
+        color_print(4,'Found boost lib version... %s' % env['BOOST_LIB_VERSION_FROM_HEADER'] )
     
     for count, libinfo in enumerate(BOOST_LIBSHEADERS):
         if not conf.CheckLibWithHeader('boost_%s%s' % (libinfo[0],env['BOOST_APPEND']), libinfo[1], 'C++'):
@@ -1252,8 +1241,8 @@ if not preconfigured:
     # we link locally
     
     if env['INTERNAL_LIBAGG']:
-        env.Prepend(CPPPATH = '#agg/include')
-        env.Prepend(LIBPATH = '#agg')
+        env.Prepend(CPPPATH = '#deps/agg/include')
+        env.Prepend(LIBPATH = '#deps/agg')
     else:
         env.ParseConfig('pkg-config --libs --cflags libagg')
 
@@ -1328,7 +1317,7 @@ if not preconfigured:
         if not conf.CheckHeader(header='boost/python/detail/config.hpp',language='C++'):
             color_print(1,'Could not find required header files for boost python')
             env['MISSING_DEPS'].append('boost python')
-
+        
         if env['CAIRO']:
             if conf.CheckPKGConfig('0.15.0') and conf.CheckPKG('pycairo'):
                 env['HAS_PYCAIRO'] = True
@@ -1378,27 +1367,19 @@ if not preconfigured:
         # fetch the mapnik version header in order to set the
         # ABI version used to build libmapnik.so on linux in src/build.py
         abi = conf.GetMapnikLibVersion()
-        abi_fallback = [2,0,0]
+        abi_fallback = "2.0.1"
         if not abi:
             color_print(1,'Problem encountered parsing mapnik version, falling back to %s' % abi_fallback)
-            env['ABI_VERSION'] = abi_fallback
-        else:
-            env['ABI_VERSION'] = abi
-        env['MAPNIK_VERSION_STRING'] = '.'.join(['%d' % i for i in env['ABI_VERSION']])
+            abi = abi_fallback
 
+        env['ABI_VERSION'] = abi.replace('-pre','').split('.')
+        env['MAPNIK_VERSION_STRING'] = abi
 
         # Common C++ flags.
         if env['THREADING'] == 'multi':
             common_cxx_flags = '-D%s -DBOOST_SPIRIT_THREADSAFE -DMAPNIK_THREADSAFE ' % env['PLATFORM'].upper()
         else :
             common_cxx_flags = '-D%s ' % env['PLATFORM'].upper()
-
-        svn_version = call('svnversion')
-        if not svn_version == 'exported':
-            pattern = r'(\d+)(.*)'
-            try:
-                env['SVN_REVISION'] = re.match(pattern,svn_version).groups()[0]
-            except: pass
             
         # Mac OSX (Darwin) special settings
         if env['PLATFORM'] == 'Darwin':
@@ -1499,14 +1480,23 @@ if not preconfigured:
             if not conf.CheckHeader(header='Python.h',language='C'):
                 color_print(1,'Could not find required header files for the Python language (version %s)' % env['PYTHON_VERSION'])
                 env.Replace(**backup)
-                env['MISSING_DEPS'].append('python %s development headers' % env['PYTHON_VERSION'])
+                Exit(1)
             else:
                 env.Replace(**backup)
        
             if (int(majver), int(minver)) < (2, 2):
                 color_print(1,"Python version 2.2 or greater required")
                 Exit(1)
-        
+
+            if env['BOOST_PYTHON_LIB']:
+                env.Append(LIBS='python%s' % env['PYTHON_VERSION'])
+                if not conf.CheckLibWithHeader(libs=[env['BOOST_PYTHON_LIB']], header='boost/python/detail/config.hpp', language='C++'):
+                    color_print(1, 'Could not find library %s for boost python' % env['BOOST_PYTHON_LIB'])
+                    env.Replace(**backup)
+                    Exit(1)
+                else:
+                    env.Replace(**backup)
+
             color_print(4,'Bindings Python version... %s' % env['PYTHON_VERSION'])
             color_print(4,'Python %s prefix... %s' % (env['PYTHON_VERSION'], env['PYTHON_SYS_PREFIX']))
             color_print(4,'Python bindings will install in... %s' % os.path.normpath(env['PYTHON_INSTALL_LOCATION']))
@@ -1565,8 +1555,19 @@ if not HELP_REQUESTED:
         env['ENV']['PKG_CONFIG_PATH'] = os.path.realpath(env['PKG_CONFIG_PATH'])
         # otherwise this variable == os.environ["PKG_CONFIG_PATH"]
     
-    if env['PATH_INSERT']:
-        env['ENV']['PATH'] = os.path.realpath(env['PATH_INSERT']) + ':' + env['ENV']['PATH']
+    if env['PATH']:
+        env['ENV']['PATH'] = os.path.realpath(env['PATH']) + ':' + env['ENV']['PATH']
+
+    if env['PATH_REMOVE']:
+        p = env['PATH_REMOVE']
+        if p in env['ENV']['PATH']:
+            env['ENV']['PATH'].replace(p,'')
+        def rm_path(set):
+            for i in env[set]:
+                if p in i:
+                    env[set].remove(i)
+        rm_path('LIBPATH')
+        rm_path('CPPPATH')
 
     # export env so it is available in build.py files
     Export('env')
@@ -1596,7 +1597,7 @@ if not HELP_REQUESTED:
         
     # Build agg first, doesn't need anything special
     if env['RUNTIME_LINK'] == 'shared' and env['INTERNAL_LIBAGG']:
-        SConscript('agg/build.py')
+        SConscript('deps/agg/build.py')
     
     # Build the core library
     SConscript('src/build.py')
@@ -1661,7 +1662,7 @@ if not HELP_REQUESTED:
         # Install the python speed testing scripts if python bindings will be available
         SConscript('utils/performance/build.py')
 
-    # Install the mapnik2 upgrade script
+    # Install the mapnik upgrade script
     SConscript('utils/upgrade_map_xml/build.py')
     
     # Configure fonts and if requested install the bundled DejaVu fonts

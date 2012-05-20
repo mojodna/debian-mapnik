@@ -1,6 +1,6 @@
 #!/bin/sh
 
-API_DOCS_DIR="../api_docs/python"
+API_DOCS_DIR="mapnik-python-`mapnik-config --version`"
 
 if [ ! -d $API_DOCS_DIR ]
     then 
@@ -11,9 +11,9 @@ fi
 epydoc --no-private \
     --no-frames \
     --no-sourcecode \
-    --name mapnik2 \
+    --name mapnik \
     --url http://mapnik.org \
-    --css mapnik_epydoc.css mapnik2 \
+    --css mapnik_epydoc.css mapnik \
     -o $API_DOCS_DIR
 
 exit $?
