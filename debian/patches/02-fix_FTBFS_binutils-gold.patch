@@ -4,8 +4,8 @@ Bug-Debian: http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=555586
 Forwarded: no
 
 ---
- utils/shapeindex/build.py |    7 ++-----
- 1 file changed, 2 insertions(+), 5 deletions(-)
+ utils/shapeindex/build.py |    5 +----
+ 1 file changed, 1 insertion(+), 4 deletions(-)
 
 --- mapnik.orig/utils/shapeindex/build.py
 +++ mapnik/utils/shapeindex/build.py
@@ -21,12 +21,5 @@ Forwarded: no
 -    libraries.append(boost_system)
 +libraries =  [boost_program_options, boost_filesystem, boost_system]
  
- shapeindex = program_env.Program('shapeindex', source, CPPPATH=headers, LIBS=libraries, LINKFLAGS=env['CUSTOM_LDFLAGS'])
- 
-@@ -53,4 +50,4 @@ if 'uninstall' not in COMMAND_LINE_TARGE
-     env.Install(os.path.join(env['INSTALL_PREFIX'],'bin'), shapeindex)
-     env.Alias('install', os.path.join(env['INSTALL_PREFIX'],'bin'))
- 
--env['create_uninstall_target'](env, os.path.join(env['INSTALL_PREFIX'],'bin','shapeindex'))
-\ No newline at end of file
-+env['create_uninstall_target'](env, os.path.join(env['INSTALL_PREFIX'],'bin','shapeindex'))
+ if env.get('BOOST_LIB_VERSION_FROM_HEADER'):
+     boost_version_from_header = int(env['BOOST_LIB_VERSION_FROM_HEADER'].split('_')[1])

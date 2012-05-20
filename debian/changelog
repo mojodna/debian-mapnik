@@ -2,8 +2,12 @@ mapnik (2.0.1+ds1-1) UNRELEASED; urgency=low
 
   * New upstream version
   * Switch debian/watch to github tags
+  * debian/patches/:
+    - 02-fix_FTBFS_binutils-gold.patch refreshed
+    - 03-fix_ImportError_mips.patc, 03-fix_big-endian.patch and
+      04-port_to_new_boost.patch removed
 
- -- David Paleino <dapal@debian.org>  Sun, 20 May 2012 08:49:20 +0200
+ -- David Paleino <dapal@debian.org>  Sun, 20 May 2012 09:02:04 +0200
 
 mapnik (2.0.0+ds1-3) unstable; urgency=low
 
