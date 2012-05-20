@@ -1,5 +1,6 @@
-mapnik (2.0.0+ds1-4) UNRELEASED; urgency=low
+mapnik (2.0.1+ds1-1) UNRELEASED; urgency=low
 
+  * New upstream version
   * Switch debian/watch to github tags
 
  -- David Paleino <dapal@debian.org>  Sun, 20 May 2012 08:49:20 +0200
