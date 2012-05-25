@@ -73,6 +73,9 @@ override_dh_installexamples:
 	dh_installexamples -Xdata/new
 	find $(CURDIR)/debian/ -name "*.png" | xargs -r chmod -x
 
+override_dh_auto_test:
+	# currently nothing
+
 %:
 	dh $@ \
 		--with python2
