@@ -67,7 +67,7 @@ override_dh_auto_clean:
 		utils/shapeindex/shapeindex config.py config.cache \
 		docs/api_docs/python/*
 
-	dh_auto_clean
+	dh_clean
 
 override_dh_installexamples:
 	dh_installexamples -Xdata/new
