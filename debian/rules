@@ -13,7 +13,7 @@ TARNAME := mapnik_$(UPVER)+ds1.orig.tar
 # scons flags
 SCONS_FLAGS := INPUT_PLUGINS=gdal,geos,kismet,ogr,osm,postgis,raster,rasterlite,shape,sqlite
 SCONS_FLAGS += PROJ_INCLUDES=/usr/include PROJ_LIBS=/usr/lib
-SCONS_FLAGS += SYSTEM_FONTS=/usr/share/fonts/truetype/ttf-dejavu
+SCONS_FLAGS += SYSTEM_FONTS=/usr/share/fonts
 SCONS_FLAGS += XMLPARSER=libxml2
 SCONS_FLAGS += PREFIX=/usr LIB_DIR_NAME=/mapnik/2.0
 

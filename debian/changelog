@@ -1,5 +1,6 @@
 mapnik (2.0.1+ds1-1) UNRELEASED; urgency=low
 
+  [ David Paleino ]
   * New upstream version
   * Switch debian/watch to github tags
   * debian/patches/:
@@ -8,7 +9,10 @@ mapnik (2.0.1+ds1-1) UNRELEASED; urgency=low
       04-port_to_new_boost.patch removed
   * Python bindings testsuite temporarily disabled
 
- -- David Paleino <dapal@debian.org>  Fri, 25 May 2012 19:00:10 +0200
+  [ Andrew Harvey ]
+  * Change debian/rules to use top level font directory (Closes: 665798)
+
+ -- Andrew Harvey <andrew.harvey4@gmail.com>  Sat, 04 Aug 2012 16:05:42 +1000
 
 mapnik (2.0.0+ds1-3) unstable; urgency=low
 
