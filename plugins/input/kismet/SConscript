@@ -32,12 +32,13 @@ kismet_src = Split(
         )
 
 libraries = []
-if env['PLATFORM'] == 'Darwin':
-    libraries.append('mapnik')
-    libraries.append(env['ICU_LIB_NAME'])
-    libraries.append('boost_thread%s' % env['BOOST_APPEND'])
+libraries.append('mapnik')
+libraries.append(env['ICU_LIB_NAME'])
+libraries.append('boost_thread%s' % env['BOOST_APPEND'])
+if env['HAS_BOOST_SYSTEM']:
+    libraries.append('boost_system%s' % env['BOOST_APPEND'])
 
-kismet_inputdriver = env.SharedLibrary('kismet', source=kismet_src, SHLIBPREFIX='', SHLIBSUFFIX='.input', LIBS=libraries)
+kismet_inputdriver = env.SharedLibrary('../kismet', source=kismet_src, SHLIBPREFIX='', SHLIBSUFFIX='.input', LIBS=libraries)
 
 env.Install(install_prefix + '/' + env['LIBDIR_SCHEMA'] + env['LIB_DIR_NAME'] + '/input', kismet_inputdriver)
 env.Alias('install', install_prefix + '/' + env['LIBDIR_SCHEMA'] + env['LIB_DIR_NAME'] + '/input')

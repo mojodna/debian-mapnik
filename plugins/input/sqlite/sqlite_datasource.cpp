@@ -76,7 +76,7 @@ std::string table_from_sql(std::string const& sql)
    return table_name;
 }
 
-sqlite_datasource::sqlite_datasource(parameters const& params)
+sqlite_datasource::sqlite_datasource(parameters const& params, bool bind)
    : datasource(params),
      extent_(),
      extent_initialized_(false),
@@ -109,6 +109,16 @@ sqlite_datasource::sqlite_datasource(parameters const& params)
     else
         dataset_name_ = *file;
 
+    if (bind)
+    {
+        this->bind();
+    }
+}
+
+void sqlite_datasource::bind() const
+{
+    if (is_bound_) return;
+    
     if (!boost::filesystem::exists(dataset_name_)) throw datasource_exception(dataset_name_ + " does not exist");
           
     dataset_ = new sqlite_connection (dataset_name_);
@@ -192,10 +202,9 @@ sqlite_datasource::sqlite_datasource(parameters const& params)
                   as all column_type are SQLITE_NULL
         */
 
-        std::string::size_type idx = table_.find(table_name);
         std::ostringstream s;
-        s << "select * from (" << table_.substr(0,idx + table_name.length()) << ") limit 1";
-        
+        s << "select * from (" << table_name << ") limit 1";
+
         boost::scoped_ptr<sqlite_resultset> rs (dataset_->execute_query (s.str()));
         if (rs->is_valid () && rs->step_next())
         {
@@ -230,18 +239,21 @@ sqlite_datasource::sqlite_datasource(parameters const& params)
             }    
         }
     }
+    
+    is_bound_ = true;
 }
 
 sqlite_datasource::~sqlite_datasource()
 {
-    delete dataset_;
+    if (is_bound_) 
+    {
+        delete dataset_;
+    }
 }
-
-std::string const sqlite_datasource::name_="sqlite";
 
 std::string sqlite_datasource::name()
 {
-   return name_;
+   return "sqlite";
 }
 
 int sqlite_datasource::type() const
@@ -251,16 +263,19 @@ int sqlite_datasource::type() const
 
 Envelope<double> sqlite_datasource::envelope() const
 {
+   if (!is_bound_) bind();
    return extent_;
 }
 
 layer_descriptor sqlite_datasource::get_descriptor() const
 {
+   if (!is_bound_) bind();
    return desc_;
 }
 
 featureset_ptr sqlite_datasource::features(query const& q) const
 {
+   if (!is_bound_) bind();
    if (dataset_)
    {
         mapnik::Envelope<double> const& e = q.get_bbox();
@@ -323,6 +338,7 @@ featureset_ptr sqlite_datasource::features(query const& q) const
 
 featureset_ptr sqlite_datasource::features_at_point(coord2d const& pt) const
 {
+   if (!is_bound_) bind();
 #if 0
    if (dataset_ && layer_)
    {

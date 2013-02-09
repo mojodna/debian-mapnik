@@ -499,23 +499,27 @@ def Kismet(**keywords):
     keywords['type'] = 'kismet'
     return CreateDatasource(keywords)
 
-def mapnik_version_string():
+def mapnik_version_string(version=mapnik_version()):
     """Return the Mapnik version as a string."""
-    version = mapnik_version()
     patch_level = version % 100
     minor_version = version / 100 % 1000
     major_version = version / 100000
     return '%s.%s.%s' % ( major_version, minor_version,patch_level)
 
+def mapnik_version_from_string(version_string):
+    """Return the Mapnik version from a string."""
+    n = version_string.split('.')
+    return (int(n[0]) * 100000) + (int(n[1]) * 100) + (int(n[2]));
+
 def register_plugins(path=inputpluginspath):
     """Register plugins located by specified path"""
     DatasourceCache.instance().register_datasources(path)
 
-def register_fonts(path=fontscollectionpath):
+def register_fonts(path=fontscollectionpath,valid_extensions=['.ttf','.otf','.ttc','.pfa','.pfb','.ttc','.dfont']):
     """Recursively register fonts using path argument as base directory"""
     for dirpath, _, filenames in os.walk(path):
         for filename in filenames:
-            if os.path.splitext(filename)[1] == '.ttf':
+            if os.path.splitext(filename)[1] in valid_extensions:
                 FontEngine.instance().register_font(os.path.join(dirpath, filename))
 
 # auto-register known plugins and fonts

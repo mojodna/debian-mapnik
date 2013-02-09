@@ -38,9 +38,10 @@ regex = 'boost_regex%s' % env['BOOST_APPEND']
 
 libraries = ['freetype','ltdl','png','tiff','z','jpeg','proj',env['ICU_LIB_NAME'],filesystem,regex]
 
-if '-DHAVE_CAIRO' in env['CXXFLAGS']:
+if env['HAS_CAIRO']:
     # add cairo and cairomm-1.0 to libs
-    libraries.append([lib for lib in env['LIBS'] if lib.startswith('cairo')])
+    libraries.append('cairomm-1.0')
+    libraries.append('cairo')
 
 if env['XMLPARSER'] == 'libxml2':
     libraries.append('xml2')
@@ -48,7 +49,7 @@ if env['XMLPARSER'] == 'libxml2':
 if env['THREADING'] == 'multi':
     libraries.append('boost_thread%s' % env['BOOST_APPEND'])
         
-if env['PLATFORM'] == 'Darwin':
+if env['PLATFORM'] in ('Darwin','SunOS'):
     if env['HAS_BOOST_SYSTEM']:
         libraries.append('boost_system%s' % env['BOOST_APPEND'])
     
@@ -64,17 +65,20 @@ if env['PLATFORM'] == 'Darwin':
     else:
         lib_path = 'libmapnik.dylib'
     linkflags = '-Wl,-install_name,%s' % lib_path
-    linkflags += ' -current_version 0.7.1 -compatibility_version 0.7.1'
-elif env['PLATFORM'] == 'SunOS' and env['CXX'].startswith('CC'):
-    linkflags = '-R. -h libmapnik.so'
+    linkflags += ' -current_version 0.7.2 -compatibility_version 0.7.2'
+elif env['PLATFORM'] == 'SunOS': 
+	    if env['CXX'].startswith('CC'): 
+	        linkflags = '-R. -h libmapnik.so' 
+	    else: 
+	        linkflags = '-Wl,-h,libmapnik.so'
 else: # Linux and others
     linkflags = '-Wl,-rpath-link,. -Wl,-soname,libmapnik.so.' + ("%d.%d" % (ABI_VERSION[0],ABI_VERSION[1]))
 
 source = Split(
     """
     agg_renderer.cpp
-    datasource_cache.cpp
     color.cpp
+    datasource_cache.cpp
     envelope.cpp
     filter_factory.cpp
     font_engine_freetype.cpp
@@ -110,11 +114,15 @@ source = Split(
     """
     )
 
-if 'cairo' in env['LIBS']:
-    source += Split(
-        """
-        cairo_renderer.cpp
-        """)
+if env['HAS_CAIRO']:
+    env2 = env.Clone()
+    env2.Append(CXXFLAGS = '-DHAVE_CAIRO')
+    env2.ParseConfig('pkg-config --libs --cflags cairomm-1.0')     
+    fixup = ['cairo_renderer.cpp','graphics.cpp','image_util.cpp']
+    for cpp in fixup:
+        if cpp in source:
+            source.remove(cpp)
+        source.insert(0,env2.SharedObject(cpp))
 
 if env['XMLPARSER'] == 'tinyxml':
     source += Split(
@@ -124,12 +132,18 @@ if env['XMLPARSER'] == 'tinyxml':
         ../tinyxml/tinyxmlerror.cpp
         ../tinyxml/tinyxmlparser.cpp
         """)
-elif env['XMLPARSER'] == 'libxml2':
+elif env['XMLPARSER'] == 'libxml2' and env['HAS_LIBXML2']:
     source += Split(
         """
         libxml2_loader.cpp
         """)
-
+    env2 = env.Clone()
+    env2.Append(CXXFLAGS = '-DHAVE_LIBXML2')
+    fixup = ['load_map.cpp','libxml2_loader.cpp']
+    for cpp in fixup:
+        if cpp in source:
+            source.remove(cpp)
+        source.insert(0,env2.SharedObject(cpp))
 
 mapnik = env.SharedLibrary('mapnik', source, LIBS=libraries, LINKFLAGS=linkflags)
 if env['PLATFORM'] != 'Darwin':
@@ -158,4 +172,5 @@ else:
     env.Alias(target='install', source=env.Install(install_prefix + '/' + env['LIBDIR_SCHEMA'], mapnik))
 
 includes = glob.glob('../include/mapnik/*.hpp')
+        
 env.Alias(target='install', source=env.Install(install_prefix+'/include/mapnik', includes))

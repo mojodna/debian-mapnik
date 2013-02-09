@@ -156,10 +156,11 @@ namespace mapnik {
                 if (t1!=t2)
                     return t1<t2;
 
-                return  (((int)x.a-y.a) >> 24) +
-                        (((int)x.r-y.r) >> 16) +
-                        (((int)x.g-y.g) >> 8) +
-                        ((int)x.b-y.b);
+                // https://github.com/mapnik/mapnik/issues/1087
+                if (x.a != y.a) return x.a < y.a;
+                if (x.r != y.r) return x.r < y.r;
+                if (x.g != y.g) return x.g < y.g;
+                return x.b < y.b;
             }
         };
 
@@ -283,8 +284,10 @@ namespace mapnik {
             {
                 byte a = preprocessAlpha(c.a);
                 unsigned ind=0;
-                if (a < InsertPolicy::MIN_ALPHA || colors_ <= 1)
+                if (a < InsertPolicy::MIN_ALPHA || colors_ == 0)
                     return 0;
+                if (colors_ == 1)
+                    return pal_remap_[has_holes_?1:0];
 
                 rgba_hash_table::iterator it = color_hashmap_.find(c);
                 if (it == color_hashmap_.end())
@@ -293,7 +296,7 @@ namespace mapnik {
                     int dist, newdist;
 
                     // find closest match based on mean of r,g,b,a
-                    vector<rgba>::iterator pit = std::lower_bound(sorted_pal_.begin(), sorted_pal_.end(), c, rgba_mean_sort_cmp());
+                    std::vector<rgba>::iterator pit = std::lower_bound(sorted_pal_.begin(), sorted_pal_.end(), c, rgba_mean_sort_cmp());
                     ind = pit-sorted_pal_.begin();
                     if (ind == sorted_pal_.size())
                         ind--;
@@ -489,7 +492,7 @@ namespace mapnik {
                     }
                     tries=0;
                     // ignore leaves and also nodes with small mean error and not excessive number of pixels
-                    if (cur_node->reduce_cost / cur_node->pixel_count * std::log(double(cur_node->pixel_count)) > 20
+                    if (cur_node->pixel_count > 0 && (cur_node->reduce_cost / cur_node->pixel_count + 1) * std::log(double(cur_node->pixel_count)) > 15
                             && cur_node->children_count > 0)
                     {
                         colors_--;

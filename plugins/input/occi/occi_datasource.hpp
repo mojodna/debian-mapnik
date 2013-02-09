@@ -39,7 +39,7 @@
 class occi_datasource : public mapnik::datasource 
 {
    public:
-      occi_datasource(mapnik::parameters const& params);
+      occi_datasource(mapnik::parameters const& params, bool bind=true);
       virtual ~occi_datasource ();
       int type() const;
       static std::string name();
@@ -47,6 +47,7 @@ class occi_datasource : public mapnik::datasource
       mapnik::featureset_ptr features_at_point(mapnik::coord2d const& pt) const;
       mapnik::Envelope<double> envelope() const;
       mapnik::layer_descriptor get_descriptor() const;
+      void bind() const;
    private:
       const std::string uri_;
       const std::string username_;
@@ -55,16 +56,17 @@ class occi_datasource : public mapnik::datasource
       const std::string geometry_field_;
       std::string geometryColumn_;
       int type_;
-      int srid_;
+      mutable int srid_;
       mutable bool extent_initialized_;
       mutable mapnik::Envelope<double> extent_;
       const int row_limit_;
       const int row_prefetch_;
-      mapnik::layer_descriptor desc_;
-      oracle::occi::StatelessConnectionPool* pool_;
+      mutable mapnik::layer_descriptor desc_;
+      mutable oracle::occi::StatelessConnectionPool* pool_;
+      mutable oracle::occi::Connection* conn_;
+      bool use_connection_pool_;
       bool multiple_geometries_;
       bool use_spatial_index_;
-      static const std::string name_;
 };
 
 

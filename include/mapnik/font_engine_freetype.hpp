@@ -44,7 +44,9 @@ extern "C"
 #include <boost/shared_ptr.hpp>
 #include <boost/utility.hpp>
 #include <boost/ptr_container/ptr_vector.hpp>
+#ifdef MAPNIK_THREADSAFE
 #include <boost/thread/mutex.hpp>
+#endif
 
 // stl
 #include <string>
@@ -308,14 +310,18 @@ namespace mapnik
     class MAPNIK_DECL freetype_engine
     {
       public:
+    static bool is_font_file(std::string const& file_name);
         static bool register_font(std::string const& file_name);
+    static bool register_fonts(std::string const& dir, bool recurse = false);
         static std::vector<std::string> face_names ();
         face_ptr create_face(std::string const& family_name);
         virtual ~freetype_engine();
         freetype_engine();
       private:
         FT_Library library_;
+#ifdef MAPNIK_THREADSAFE
         static boost::mutex mutex_;
+#endif
         static std::map<std::string,std::string> name2file_;
     };
 

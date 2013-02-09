@@ -48,7 +48,7 @@ using mapnik::query;
 using mapnik::parameters;
 using mapnik::coord2d;
 
-class transcoder;
+//class transcoder;
 class postgis_datasource : public datasource
 {
       static const std::string GEOMETRY_COLUMNS;
@@ -64,13 +64,12 @@ class postgis_datasource : public datasource
       const int row_limit_;
       mutable std::string geometryColumn_;
       int type_;
-      int srid_;
+      mutable int srid_;
       mutable bool extent_initialized_;
       mutable mapnik::Envelope<double> extent_;
-      layer_descriptor desc_;
+      mutable layer_descriptor desc_;
       ConnectionCreator<Connection> creator_;
       bool multiple_geometries_;
-      static const std::string name_;
       const std::string bbox_token_;
       const std::string scale_denom_token_;
       bool persist_connection_;
@@ -83,8 +82,9 @@ class postgis_datasource : public datasource
       featureset_ptr features_at_point(coord2d const& pt) const;
       mapnik::Envelope<double> envelope() const;
       layer_descriptor get_descriptor() const;
-      postgis_datasource(const parameters &params);
+      postgis_datasource(const parameters &params, bool bind=true);
       ~postgis_datasource();
+      void bind() const;
    private:
       std::string sql_bbox(Envelope<double> const& env) const;
       std::string populate_tokens(const std::string& sql, double const& scale_denom, Envelope<double> const& env) const;

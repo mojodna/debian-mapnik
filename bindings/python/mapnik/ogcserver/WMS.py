@@ -17,7 +17,7 @@
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
-# $Id: WMS.py 1032 2009-03-30 04:24:01Z dane $
+# $Id$
 
 """Interface for registering map styles and layers for availability in WMS Requests."""
 

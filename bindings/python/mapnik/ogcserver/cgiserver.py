@@ -17,7 +17,7 @@
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
-# $Id: cgiserver.py 1033 2009-03-30 04:25:01Z dane $
+# $Id$
 
 """CGI/FastCGI handler for Mapnik OGC WMS Server.
 

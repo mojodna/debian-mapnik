@@ -29,6 +29,10 @@
 // boost
 #include <boost/version.hpp>
 #include <boost/filesystem/operations.hpp>
+
+#if BOOST_VERSION < 103600
+#include <boost/algorithm/string/join.hpp>
+#endif
 #include <boost/algorithm/string.hpp>
 
 // ltdl
@@ -40,8 +44,8 @@
 
 namespace mapnik
 {
-   using namespace std;
-   using namespace boost;
+//using namespace std;
+//using namespace boost;
    
    bool is_input_plugin (std::string const& filename)
    {
@@ -61,8 +65,9 @@ namespace mapnik
 
    std::map<string,boost::shared_ptr<PluginInfo> > datasource_cache::plugins_;
    bool datasource_cache::registered_=false;
+std::vector<std::string> datasource_cache::plugin_directories_;
     
-   datasource_ptr datasource_cache::create(const parameters& params) 
+   datasource_ptr datasource_cache::create(const parameters& params, bool bind) 
    {
        boost::optional<std::string> type = params.get<std::string>("type");
        if ( ! type)
@@ -72,11 +77,11 @@ namespace mapnik
        }
 
        datasource_ptr ds;
-       map<string,boost::shared_ptr<PluginInfo> >::iterator itr=plugins_.find(*type);
+    std::map<string,boost::shared_ptr<PluginInfo> >::iterator itr=plugins_.find(*type);
        if ( itr == plugins_.end() )
        {
            throw config_error(string("Could not create datasource. No plugin ") +
-                   "found for type '" + * type + "'");
+                           "found for type '" + * type + "' (searched in: " + plugin_directories() + ")");
        }
        if ( ! itr->second->handle())
        {
@@ -100,7 +105,7 @@ namespace mapnik
           std::clog << i->first << "=" << i->second << "\n";  
        }
 #endif
-       ds=datasource_ptr(create_datasource(params), datasource_deleter());
+    ds=datasource_ptr(create_datasource(params, bind), datasource_deleter());
 
 #ifdef MAPNIK_DEBUG
        std::clog<<"datasource="<<ds<<" type="<<type<<std::endl;
@@ -113,6 +118,11 @@ namespace mapnik
       return plugins_.insert(make_pair(type,boost::shared_ptr<PluginInfo>
                                        (new PluginInfo(type,module)))).second;     
    }
+
+std::string datasource_cache::plugin_directories()
+{
+    return boost::algorithm::join(plugin_directories_,", ");
+}
 
    std::vector<std::string> datasource_cache::plugin_names ()
    {
@@ -131,25 +141,35 @@ namespace mapnik
       mutex::scoped_lock lock(mapnik::singleton<mapnik::datasource_cache, 
                               mapnik::CreateStatic>::mutex_);
 #endif
-      filesystem::path path(str);
-      filesystem::directory_iterator end_itr;
+    boost::filesystem::path path(str);
+    plugin_directories_.push_back(str);
+    boost::filesystem::directory_iterator end_itr;
  
 
       if (exists(path) && is_directory(path))
       {
-         for (filesystem::directory_iterator itr(path);itr!=end_itr;++itr )
+        for (boost::filesystem::directory_iterator itr(path);itr!=end_itr;++itr )
          {
 
 #if BOOST_VERSION < 103400 
             if (!is_directory( *itr )  && is_input_plugin(itr->leaf()))      
 #else
+#if (BOOST_FILESYSTEM_VERSION == 3)      
+            if (!is_directory( *itr )  && is_input_plugin(itr->path().filename().string()))
+#else // v2
             if (!is_directory( *itr )  && is_input_plugin(itr->path().leaf()))   
 #endif
-
+#endif
             {
                try 
                {
-                  lt_dlhandle module=lt_dlopen(itr->string().c_str());
+
+#if (BOOST_FILESYSTEM_VERSION == 3)   
+                  lt_dlhandle module = lt_dlopen(itr->path().string().c_str());
+#else // v2
+                  lt_dlhandle module = lt_dlopen(itr->string().c_str());
+
+#endif
                   if (module)
                   {
                      datasource_name* ds_name = 
@@ -164,7 +184,13 @@ namespace mapnik
                   }
                   else
                   {
-                     std::clog << "Problem loading plugin library: " << itr->string().c_str() << " (libtool error: " << lt_dlerror() << ")" << std::endl;
+#if (BOOST_FILESYSTEM_VERSION == 3) 
+                        std::clog << "Problem loading plugin library: " << itr->path().string() 
+                                  << " (dlopen failed - plugin likely has an unsatified dependency or incompatible ABI)" << std::endl;
+#else // v2
+                        std::clog << "Problem loading plugin library: " << itr->string() 
+                                  << " (dlopen failed - plugin likely has an unsatified dependency or incompatible ABI)" << std::endl;    
+#endif
                   }
                }
                catch (...) {}

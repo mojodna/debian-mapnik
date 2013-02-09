@@ -58,7 +58,9 @@ namespace mapnik
             const unsigned int *in_end = in_ptr + pixels;
             unsigned int *out_ptr;
 
-            out_ptr = data_ = new unsigned int[pixels];
+            surface_ = Cairo::ImageSurface::create(Cairo::FORMAT_ARGB32, data.width(), data.height());
+
+            out_ptr = reinterpret_cast<unsigned int *>(surface_->get_data());
 
             while (in_ptr < in_end)
             {
@@ -74,14 +76,13 @@ namespace mapnik
 
                *out_ptr++ = (a << 24) | (r << 16) | (g << 8) | b;
             }
-
-            surface_ = Cairo::ImageSurface::create(reinterpret_cast<unsigned char *>(data_), Cairo::FORMAT_ARGB32, data.width(), data.height(), data.width() * 4);
+            // mark the surface as dirty as we've modified it behind cairo's back
+            surface_->mark_dirty();
             pattern_ = Cairo::SurfacePattern::create(surface_);
          }
 
          ~cairo_pattern(void)
          {
-            delete [] data_;
          }
          
          void set_matrix(Cairo::Matrix const& matrix)
@@ -117,7 +118,6 @@ namespace mapnik
          }
 
       private:
-         unsigned int *data_;
          Cairo::RefPtr<Cairo::ImageSurface> surface_;
          Cairo::RefPtr<Cairo::SurfacePattern> pattern_;
    };
@@ -1018,11 +1018,11 @@ namespace mapnik
       typedef coord_transform2<CoordTransform,geometry2d> path_type;
 
       UnicodeString text = feature[sym.get_name()].to_unicode();
-      if ( sym.get_text_convert() == TOUPPER)
+      if ( sym.get_text_convert() == TOUPPER || sym.get_text_convert() == TOUPPER2) // mapnik2 compatibility
       {
          text = text.toUpper();
       }
-      else if ( sym.get_text_convert() == TOLOWER)
+      else if ( sym.get_text_convert() == TOLOWER || sym.get_text_convert() == TOLOWER2) // mapnik2 compatibility
       {
          text = text.toLower();
       }

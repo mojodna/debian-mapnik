@@ -300,6 +300,11 @@ namespace mapnik
 #ifdef MAPNIK_BIG_ENDIAN
                       unsigned a1 = rgba1 & 0xff;
                       if (a1 == 0) continue;
+                      if (a1 == 0xff)
+                      {
+                         row_to[x] = rgba1;
+                         continue;
+                      }
                       unsigned r1 = (rgba1 >> 24) & 0xff;
                       unsigned g1 = (rgba1 >> 16 ) & 0xff;
                       unsigned b1 = (rgba1 >> 8) & 0xff;
@@ -319,6 +324,11 @@ namespace mapnik
 #else
                       unsigned a1 = (rgba1 >> 24) & 0xff;
                       if (a1 == 0) continue;
+                      if (a1 == 0xff)
+                      {
+                         row_to[x] = rgba1;
+                         continue;
+                      }
                       unsigned r1 = rgba1 & 0xff;
                       unsigned g1 = (rgba1 >> 8 ) & 0xff;
                       unsigned b1 = (rgba1 >> 16) & 0xff;
@@ -360,6 +370,11 @@ namespace mapnik
 #ifdef MAPNIK_BIG_ENDIAN
                       unsigned a1 = int( (rgba1 & 0xff) * opacity );
                       if (a1 == 0) continue;
+                      if (a1 == 0xff)
+                      {
+                         row_to[x] = rgba1;
+                         continue;
+                      }
                       unsigned r1 = (rgba1 >> 24) & 0xff;
                       unsigned g1 = (rgba1 >> 16 ) & 0xff;
                       unsigned b1 = (rgba1 >> 8) & 0xff;
@@ -369,15 +384,24 @@ namespace mapnik
                       unsigned g0 = (rgba0 >> 16 ) & 0xff;
                       unsigned b0 = (rgba0 >> 8) & 0xff;
 
-                      r0 = byte(((r1 - r0) * a1 + (r0 << 8)) >> 8);
-                      g0 = byte(((g1 - g0) * a1 + (g0 << 8)) >> 8);
-                      b0 = byte(((b1 - b0) * a1 + (b0 << 8)) >> 8);
-                      a0 = byte((a1 + a0) - ((a1 * a0 + 255) >> 8));
+                      unsigned atmp = a1 + a0 - ((a1 * a0 + 255) >> 8);
+                      if (atmp)
+                      {
+                          r0 = byte((r1 * a1 + (r0 * a0) - ((r0 * a0 * a1 + 255) >> 8)) / atmp);
+                          g0 = byte((g1 * a1 + (g0 * a0) - ((g0 * a0 * a1 + 255) >> 8)) / atmp);
+                          b0 = byte((b1 * a1 + (b0 * a0) - ((b0 * a0 * a1 + 255) >> 8)) / atmp);
+                      }
+                      a0 = byte(atmp);
 
                       row_to[x] = (a0)| (b0 << 8) |  (g0 << 16) | (r0 << 24) ;
 #else
                       unsigned a1 = int( ((rgba1 >> 24) & 0xff) * opacity );
                       if (a1 == 0) continue;
+                      if (a1 == 0xff)
+                      {
+                         row_to[x] = rgba1;
+                         continue;
+                      }
                       unsigned r1 = rgba1 & 0xff;
                       unsigned g1 = (rgba1 >> 8 ) & 0xff;
                       unsigned b1 = (rgba1 >> 16) & 0xff;
@@ -387,10 +411,14 @@ namespace mapnik
                       unsigned g0 = (rgba0 >> 8 ) & 0xff;
                       unsigned b0 = (rgba0 >> 16) & 0xff;
 
-                      r0 = byte(((r1 - r0) * a1 + (r0 << 8)) >> 8);
-                      g0 = byte(((g1 - g0) * a1 + (g0 << 8)) >> 8);
-                      b0 = byte(((b1 - b0) * a1 + (b0 << 8)) >> 8);
-                      a0 = byte((a1 + a0) - ((a1 * a0 + 255) >> 8));
+                      unsigned atmp = a1 + a0 - ((a1 * a0 + 255) >> 8);
+                      if (atmp)
+                      {
+                          r0 = byte((r1 * a1 + (r0 * a0) - ((r0 * a0 * a1 + 255) >> 8)) / atmp);
+                          g0 = byte((g1 * a1 + (g0 * a0) - ((g0 * a0 * a1 + 255) >> 8)) / atmp);
+                          b0 = byte((b1 * a1 + (b0 * a0) - ((b0 * a0 * a1 + 255) >> 8)) / atmp);
+                      }
+                      a0 = byte(atmp);
                       
                       row_to[x] = (a0 << 24)| (b0 << 16) |  (g0 << 8) | (r0) ;
 #endif

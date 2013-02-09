@@ -18,7 +18,7 @@
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 #
-# $Id: wms.py 1056 2009-03-31 22:23:18Z dane $
+# $Id$
 
 from mapnik.ogcserver.cgiserver import Handler
 from jon import fcgi

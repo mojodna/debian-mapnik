@@ -30,26 +30,33 @@ install_prefix = env['DESTDIR'] + '/' + prefix
 
 linkflags = ''
 libraries = ['mapnik','png','jpeg']
-headers = [env['PYTHON_INCLUDES']] + env['CPPPATH']
+
+if env['HAS_BOOST_SYSTEM']:
+    libraries.append('boost_system%s' % env['BOOST_APPEND'])
 
 if env['BOOST_PYTHON_LIB']:
-    if os.path.sep in env['BOOST_PYTHON_LIB']:
-        pylib_dir = os.path.dirname(env['BOOST_PYTHON_LIB'])
-        env.Prepend(LIBPATH = pylib_dir)
-        pylib_name = os.path.splitext(os.path.basename(env['BOOST_PYTHON_LIB']))[0].replace('lib','',1)
-        libraries.append(pylib_name)
-    else:
-        libraries.append(env['BOOST_PYTHON_LIB'].replace('lib','',1))
+    libraries.append(env['BOOST_PYTHON_LIB'])
 else:
     libraries.append('boost_python%s' % env['BOOST_APPEND'])
+
+
+# set up an understanding of where libmapnik is being installed
+# so that the python module can locate it at runtime
+# and so that we can add its runpath to _mapnik.so if needed (e.g. solaris)
+# Note: we use prefix rather than install_prefix here since install_prefix is for package building
+# and we intend for python to look to the standard prefix location to find the fonts and plugins
+mapnik_lib_path  = os.path.normpath(prefix + '/' + env['LIBDIR_SCHEMA'])
+mapnik_lib_dir_path  = os.path.normpath(prefix + '/' + env['LIBDIR_SCHEMA'] + env['LIB_DIR_NAME'])
+
 
 if env['PLATFORM'] == 'Darwin':
     libraries.append(env['ICU_LIB_NAME'])
     libraries.append('boost_regex%s' % env['BOOST_APPEND'])
     if env['THREADING'] == 'multi':
         libraries.append('boost_thread%s' % env['BOOST_APPEND'])
-    if '-DHAVE_CAIRO' in env['CXXFLAGS']:
-        libraries.append([lib for lib in env['LIBS'] if lib.startswith('cairo')])
+    if env['HAS_CAIRO']:
+        libraries.append('cairomm-1.0')
+        libraries.append('cairo')
 
     ##### Python linking on OS X is tricky ### 
     # Confounding problems are:
@@ -92,6 +99,10 @@ if env['PLATFORM'] == 'Darwin':
     # if we are not linking to a framework then use the *nix standard approach
     else:
         linkflags = '-lpython%s' % env['PYTHON_VERSION']
+elif env['PLATFORM'] == 'SunOS':
+    # make sure to explicitly link mapnik.so against
+    # libmapnik in its installed location
+    linkflags = '-R%s' % mapnik_lib_path
 
 
 
@@ -111,13 +122,9 @@ else:
     paths += "fontscollectionpath = os.path.normpath(mapniklibpath + '/fonts')"
 
 
-# write out the location of the 'mapniklibpath' into a python file
-# so that the python module can locate it at runtime
-exp =  r"%s{2,}" % os.sep
-# Note: we use prefix rather than install_prefix here since install_prefix is for package building
-# and we intend for python to look to the standard prefix location to find the fonts and plugins
-mapnik_lib_path  = re.sub(exp,os.sep, prefix + '/' + env['LIBDIR_SCHEMA'] + env['LIB_DIR_NAME'])
-file('mapnik/paths.py','w').write(paths % (mapnik_lib_path))
+if not os.path.exists('mapnik'):
+    os.mkdir('mapnik')
+file('mapnik/paths.py','w').write(paths % (mapnik_lib_dir_path))
 
 try:
     os.chmod('mapnik/paths.py',0666)
@@ -133,8 +140,52 @@ ogcserver_files = glob.glob('mapnik/ogcserver/*.py')
 ogcserver_module = env.Install(env['PYTHON_INSTALL_LOCATION'] + '/mapnik/ogcserver', ogcserver_files)
 env.Alias(target='install', source=ogcserver_module)
 
-
 # install the shared object beside the module directory
-_mapnik = env.LoadableModule('_mapnik', glob.glob('*.cpp'), LIBS=libraries, LDMODULEPREFIX='', LDMODULESUFFIX='.so', CPPPATH=headers,LINKFLAGS=linkflags)
-pymapniklib = env.Install(env['PYTHON_INSTALL_LOCATION'] + '/mapnik',_mapnik)
+sources = glob.glob('*.cpp')
+
+
+py_env = env.Clone()
+py_env.Append(CPPPATH = env['PYTHON_INCLUDES'])
+
+if env['SVN_REVISION']:
+    sources.remove('mapnik_python.cpp')
+    env2 = py_env.Clone()
+    env2.Append(CXXFLAGS='-DSVN_REVISION=%s' % env['SVN_REVISION'])
+    if env['HAS_CAIRO'] or env['HAS_PYCAIRO']:
+        if env['HAS_CAIRO']:
+            env2.ParseConfig('pkg-config --libs --cflags cairomm-1.0')
+            env2.Append(CXXFLAGS = '-DHAVE_CAIRO')
+        if env['HAS_PYCAIRO']:
+            env2.ParseConfig('pkg-config --cflags pycairo')
+            env2.Append(CXXFLAGS = '-DHAVE_PYCAIRO')
+    sources.insert(0,env2.SharedObject('mapnik_python.cpp'))
+
+if env['HAS_CAIRO'] or env['HAS_PYCAIRO']:
+    # attach libs to _mapnik.so linking environment
+    py_env.ParseConfig('pkg-config --libs cairomm-1.0')
+    env2 = py_env.Clone()
+    fixup = ['mapnik_image.cpp','python_cairo.cpp']
+    if not env['SVN_REVISION']:
+        fixup.append('mapnik_python.cpp')
+    for cpp in fixup:
+        if cpp in sources:
+            sources.remove(cpp)
+    if env['HAS_CAIRO']:
+        env2.Append(CXXFLAGS = '-DHAVE_CAIRO')
+        env2.ParseConfig('pkg-config --cflags cairomm-1.0')
+    if env['HAS_PYCAIRO']:
+        env2.ParseConfig('pkg-config --cflags pycairo')
+        env2.Append(CXXFLAGS = '-DHAVE_PYCAIRO')
+    for cpp in fixup:
+        sources.insert(0,env2.SharedObject(cpp))
+
+_mapnik = py_env.LoadableModule('mapnik/_mapnik', sources, LIBS=libraries, LDMODULEPREFIX='', LDMODULESUFFIX='.so',LINKFLAGS=linkflags)
+
+if env['PLATFORM'] == 'SunOS' and env['PYTHON_IS_64BIT']:
+    # http://mail.python.org/pipermail/python-dev/2006-August/068528.html
+    cxx_module_path = os.path.join(env['PYTHON_INSTALL_LOCATION'],'mapnik','64')
+else:
+    cxx_module_path = os.path.join(env['PYTHON_INSTALL_LOCATION'],'mapnik')
+
+pymapniklib = env.Install(cxx_module_path,_mapnik)
 env.Alias(target='install',source=pymapniklib)
